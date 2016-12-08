@@ -16,7 +16,7 @@
  *    Simon Bernard - Please refer to git log
  *    Toby Jaffey - Please refer to git log
  *    Pascal Rieux - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 /*
@@ -55,6 +55,11 @@
 #include <string.h>
 
 #include <stdio.h>
+
+#ifdef SIERRA
+#include "lwm2mcore.h"
+#include "../../sessionManager/lwm2mcoreSessionParam.h"
+#endif
 
 
 lwm2m_context_t * lwm2m_init(void * userData)
@@ -109,23 +114,10 @@ static void prv_deleteServerList(lwm2m_context_t * context)
     }
 }
 
-static void prv_deleteBootstrapServer(lwm2m_server_t * serverP)
+static void prv_deleteBootstrapServerList(lwm2m_context_t * contextP)
 {
-    // TODO should we free location as in prv_deleteServer ?
-    // TODO should we parse transaction and observation to remove the ones related to this server ?
-    free_block1_buffer(serverP->block1Data);
-    lwm2m_free(serverP);
-}
-
-static void prv_deleteBootstrapServerList(lwm2m_context_t * context)
-{
-    while (NULL != context->bootstrapServerList)
-    {
-        lwm2m_server_t * server;
-        server = context->bootstrapServerList;
-        context->bootstrapServerList = server->next;
-        prv_deleteBootstrapServer(server);
-    }
+    LWM2M_LIST_FREE(contextP->bootstrapServerList);
+    contextP->bootstrapServerList = NULL;
 }
 
 static void prv_deleteObservedList(lwm2m_context_t * contextP)
@@ -166,7 +158,9 @@ void lwm2m_close(lwm2m_context_t * contextP)
 #ifdef LWM2M_CLIENT_MODE
 
     LOG("Entering");
+#ifdef LWM2M_DEREGISTER
     lwm2m_deregister(contextP);
+#endif
     prv_deleteServerList(contextP);
     prv_deleteBootstrapServerList(contextP);
     prv_deleteObservedList(contextP);
@@ -382,6 +376,9 @@ next_step:
             // Bootstrapping
             contextP->state = STATE_BOOTSTRAP_REQUIRED;
         }
+#if SIERRA
+        LOG_ARG ("STATE_INITIAL -> %s", STR_STATE(contextP->state));
+#endif
         goto next_step;
         break;
 
@@ -389,13 +386,26 @@ next_step:
 #ifdef LWM2M_BOOTSTRAP
         if (contextP->bootstrapServerList != NULL)
         {
+#if SIERRA
+            /* Notify that the device starts to bootstrap */
+            lwm2mcore_sessionEvent (LWM2MCORE_EVENT_TYPE_BOOTSTRAP,
+                                    LWM2MCORE_EVENT_STATUS_STARTED);
+#endif
             bootstrap_start(contextP);
             contextP->state = STATE_BOOTSTRAPPING;
             bootstrap_step(contextP, tv_sec, timeoutP);
+#if SIERRA
+            LOG_ARG ("STATE_BOOTSTRAP_REQUIRED -> %s", STR_STATE(contextP->state));
+#endif
         }
         else
 #endif
         {
+#if SIERRA
+            /* Notify that the device fails to bootstrap */
+            lwm2mcore_sessionEvent (LWM2MCORE_EVENT_TYPE_BOOTSTRAP,
+                                    LWM2MCORE_EVENT_STATUS_DONE_FAIL);
+#endif
             return COAP_503_SERVICE_UNAVAILABLE;
         }
         break;
@@ -405,11 +415,24 @@ next_step:
         switch (bootstrap_getStatus(contextP))
         {
         case STATE_BS_FINISHED:
+#if SIERRA
+            /* Notify that the bootstrap succeeds */
+            lwm2mcore_sessionEvent (LWM2MCORE_EVENT_TYPE_BOOTSTRAP,
+                                    LWM2MCORE_EVENT_STATUS_DONE_SUCCESS);
+#endif
             contextP->state = STATE_INITIAL;
+#if SIERRA
+            LOG_ARG ("STATE_BOOTSTRAPPING -> %s", STR_STATE(contextP->state));
+#endif
             goto next_step;
             break;
 
         case STATE_BS_FAILED:
+#if SIERRA
+            /* Notify that the device fails to bootstrap */
+            lwm2mcore_sessionEvent (LWM2MCORE_EVENT_TYPE_BOOTSTRAP,
+                                    LWM2MCORE_EVENT_STATUS_DONE_FAIL);
+#endif
             return COAP_503_SERVICE_UNAVAILABLE;
 
         default:
@@ -420,9 +443,17 @@ next_step:
         break;
 #endif
     case STATE_REGISTER_REQUIRED:
+#if SIERRA
+        /* Notify that the device starts to register */
+        lwm2mcore_sessionEvent (LWM2MCORE_EVENT_TYPE_REGISTRATION,
+                                LWM2MCORE_EVENT_STATUS_STARTED);
+#endif
         result = registration_start(contextP);
         if (COAP_NO_ERROR != result) return result;
         contextP->state = STATE_REGISTERING;
+#if SIERRA
+        LOG_ARG ("STATE_REGISTER_REQUIRED -> %s", STR_STATE(contextP->state));
+#endif
         break;
 
     case STATE_REGISTERING:
@@ -431,11 +462,26 @@ next_step:
         {
         case STATE_REGISTERED:
             contextP->state = STATE_READY;
+            LOG_ARG ("STATE_REGISTERED -> %s", STR_STATE(contextP->state));
+#if SIERRA
+            /* Notify that the device is registered */
+            lwm2mcore_sessionEvent (LWM2MCORE_EVENT_TYPE_REGISTRATION,
+                                    LWM2MCORE_EVENT_STATUS_DONE_SUCCESS);
+#endif
             break;
 
         case STATE_REG_FAILED:
+#if SIERRA
+            /* Notify that the device can not register */
+            lwm2mcore_sessionEvent (LWM2MCORE_EVENT_TYPE_REGISTRATION,
+                                    LWM2MCORE_EVENT_STATUS_DONE_FAIL);
+#endif
+
             // TODO avoid infinite loop by checking the bootstrap info is different
             contextP->state = STATE_BOOTSTRAP_REQUIRED;
+#if SIERRA
+            LOG_ARG ("STATE_REG_FAILED -> %s", STR_STATE(contextP->state));
+#endif
             goto next_step;
             break;
 
@@ -452,6 +498,9 @@ next_step:
         {
             // TODO avoid infinite loop by checking the bootstrap info is different
             contextP->state = STATE_BOOTSTRAP_REQUIRED;
+#if SIERRA
+            LOG_ARG ("STATE_READY -> %s", STR_STATE(contextP->state));
+#endif
             goto next_step;
             break;
         }

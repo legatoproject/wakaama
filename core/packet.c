@@ -92,6 +92,10 @@ Contains code snippets which are:
 
 #include <stdio.h>
 
+#if SIERRA
+#include "lwm2mcore.h"
+#include "osDebug.h"
+#endif
 
 static void handle_reset(lwm2m_context_t * contextP,
                          void * fromSessionH,
@@ -112,7 +116,7 @@ static coap_status_t handle_request(lwm2m_context_t * contextP,
     coap_status_t result = COAP_IGNORE;
 
     LOG("Entering");
-	
+
 #ifdef LWM2M_CLIENT_MODE
     uriP = uri_decode(contextP->altPath, message->uri_path);
 #else
@@ -212,7 +216,23 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
     {
         LOG_ARG("Parsed: ver %u, type %u, tkl %u, code %u.%.2u, mid %u, Content type: %d",
                 message->version, message->type, message->token_len, message->code >> 5, message->code & 0x1F, message->mid, message->content_type);
+#if SIERRA
+        {
+            /* only dump data for Device Management session */
+            bool result = false;
+            bool sessionType = false;
+            result = lwm2mcore_connectionGetType ((int)contextP, &sessionType);
+#ifndef CREDENTIALS_DEBUG
+            if( result && sessionType)
+#endif
+            {
+                os_debug_data_dump ("Payload", message->payload, message->payload_len);
+            }
+        }
+#else
         LOG_ARG("Payload: %.*s", message->payload_len, message->payload);
+#endif
+
         if (message->code >= COAP_GET && message->code <= COAP_DELETE)
         {
             uint32_t block_num = 0;

@@ -112,6 +112,12 @@ static int prv_getRegistrationQuery(lwm2m_context_t * contextP,
     }
     if (res < 0) return 0;
 
+#if SIERRA
+    /* Add the supported LWM2M version */
+    res = utils_stringCopy(buffer + index, length - index, QUERY_DELIMITER QUERY_VERSION_FULL);
+    if (res < 0) return 0;
+#endif
+
     return index + res;
 }
 
@@ -166,6 +172,7 @@ static uint8_t prv_register(lwm2m_context_t * contextP,
 
     if (query_length == 0) return COAP_500_INTERNAL_SERVER_ERROR;
 
+    LOG_ARG ("server->lifetime %d", server->lifetime);
     if (0 != server->lifetime)
     {
         int res;
@@ -177,6 +184,11 @@ static uint8_t prv_register(lwm2m_context_t * contextP,
         if (res < 0) return COAP_500_INTERNAL_SERVER_ERROR;
         query_length += res;
     }
+
+#if SIERRA
+    /* Dump REGISTER data */
+    os_debug_data_dump( "register", query, query_length);
+#endif
 
     if (server->sessionH == NULL)
     {
@@ -334,7 +346,7 @@ uint8_t registration_start(lwm2m_context_t * contextP)
     uint8_t result;
 
     LOG_ARG("State: %s", STR_STATE(contextP->state));
-	
+
     result = COAP_NO_ERROR;
 
     targetP = contextP->serverList;
@@ -347,6 +359,10 @@ uint8_t registration_start(lwm2m_context_t * contextP)
         }
         targetP = targetP->next;
     }
+
+#if SIERRA
+    LOG_ARG("registration_start result 0x%x", result);
+#endif
 
     return result;
 }
@@ -699,7 +715,7 @@ static int prv_getId(uint8_t * data,
     {
         data += 1;
         length -= 2;
-    } 
+    }
     else
     {
         return 0;

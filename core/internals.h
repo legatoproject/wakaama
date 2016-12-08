@@ -16,7 +16,7 @@
  *    Toby Jaffey - Please refer to git log
  *    Bosch Software Innovations GmbH - Please refer to git log
  *    Pascal Rieux - Please refer to git log
- *    
+ *
  *******************************************************************************/
 /*
  Copyright (c) 2013, 2014 Intel Corporation
@@ -66,6 +66,33 @@
 #include <inttypes.h>
 #define LOG(STR) lwm2m_printf("[%s:%d] " STR "\r\n", __func__ , __LINE__)
 #define LOG_ARG(FMT, ...) lwm2m_printf("[%s:%d] " FMT "\r\n", __func__ , __LINE__ , __VA_ARGS__)
+#if SIERRA
+#define LOG_URI(URI)                                                                \
+{                                                                                   \
+    if ((URI) == NULL) lwm2m_printf("[%s:%d] NULL\r\n", __func__ , __LINE__);     \
+    else                                                                            \
+    {                                                                               \
+        if ((LWM2M_URI_IS_SET_RESOURCE(URI)) && (LWM2M_URI_IS_SET_INSTANCE(URI)))   \
+        {                                                                           \
+            lwm2m_printf("[%s:%d] /%d/%d/%d",                                       \
+                        __func__ , __LINE__ ,                                       \
+                        (URI)->objectId, (URI)->instanceId, (URI)->resourceId);     \
+        }                                                                           \
+        else if (LWM2M_URI_IS_SET_INSTANCE(URI))                                     \
+        {                                                                           \
+            lwm2m_printf("[%s:%d] /%d/%d",                                          \
+                        __func__ , __LINE__ ,                                       \
+                        (URI)->objectId, (URI)->instanceId);                        \
+        }                                                                           \
+        else                                                                        \
+        {                                                                           \
+            lwm2m_printf("[%s:%d] /%d",                                             \
+                        __func__ , __LINE__ ,                                       \
+                        (URI)->objectId);                                           \
+        }                                                                           \
+    }                                                                               \
+}
+#else
 #define LOG_URI(URI)                                                                \
 {                                                                                   \
     if ((URI) == NULL) lwm2m_printf("[%s:%d] NULL\r\n", __func__ , __LINE__);     \
@@ -77,6 +104,7 @@
         lwm2m_printf("\r\n");                                                       \
     }                                                                               \
 }
+#endif /* !SIERRA */
 #define STR_STATUS(S)                                           \
 ((S) == STATE_DEREGISTERED ? "STATE_DEREGISTERED" :             \
 ((S) == STATE_REG_PENDING ? "STATE_REG_PENDING" :               \

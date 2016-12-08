@@ -17,7 +17,7 @@
  *    Benjamin Cabé - Please refer to git log
  *    Bosch Software Innovations GmbH - Please refer to git log
  *    Pascal Rieux - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 /*
@@ -58,6 +58,33 @@
 #include <string.h>
 #include <stdio.h>
 
+#if SIERRA
+void object_logPath (lwm2m_uri_t * uriP)
+{
+    if ((uriP->flag & LWM2M_URI_FLAG_INSTANCE_ID) != 0 )
+    {
+        if (LWM2M_URI_IS_SET_INSTANCE(uriP))
+        {
+            if (LWM2M_URI_IS_SET_RESOURCE(uriP))
+            {
+                LOG_ARG ("/ %d / %d / %d", uriP->objectId, uriP->instanceId, uriP->resourceId);
+            }
+            else
+            {
+                LOG_ARG ("/ %d / %d", uriP->objectId, uriP->instanceId);
+            }
+        }
+        else
+        {
+            LOG_ARG ("/ %d / %d / %d", uriP->objectId);
+        }
+    }
+    else
+    {
+        LOG ("/");
+    }
+}
+#endif
 
 uint8_t object_checkReadable(lwm2m_context_t * contextP,
                              lwm2m_uri_t * uriP)
@@ -201,7 +228,12 @@ coap_status_t object_read(lwm2m_context_t * contextP,
     lwm2m_data_t * dataP = NULL;
     int size = 0;
 
+#if SIERRA
+    LOG ("READ cmd - path:");
+    object_logPath (uriP);
+#else
     LOG_URI(uriP);
+#endif
     result = object_readData(contextP, uriP, &size, &dataP);
 
     if (result == COAP_205_CONTENT)
@@ -236,7 +268,12 @@ coap_status_t object_write(lwm2m_context_t * contextP,
     lwm2m_data_t * dataP = NULL;
     int size = 0;
 
+#if SIERRA
+    LOG ("WRITE cmd - path:");
+    object_logPath (uriP);
+#else
     LOG_URI(uriP);
+#endif
     targetP = (lwm2m_object_t *)LWM2M_LIST_FIND(contextP->objectList, uriP->objectId);
     if (NULL == targetP)
     {
@@ -291,7 +328,11 @@ coap_status_t object_create(lwm2m_context_t * contextP,
     int size = 0;
     uint8_t result;
 
+#if SIERRA
+    LOG_ARG ("CREATE / %d / %d / %d", uriP->objectId, uriP->instanceId, uriP->resourceId);
+#else
     LOG_URI(uriP);
+#endif
     if (length == 0 || buffer == 0)
     {
         return COAP_400_BAD_REQUEST;
@@ -353,7 +394,12 @@ coap_status_t object_delete(lwm2m_context_t * contextP,
     if (NULL == objectP) return COAP_404_NOT_FOUND;
     if (NULL == objectP->deleteFunc) return COAP_405_METHOD_NOT_ALLOWED;
 
+#if SIERRA
+    LOG ("DELETE cmd - path:");
+    object_logPath (uriP);
+#else
     LOG("Entering");
+#endif
 
     if (LWM2M_URI_IS_SET_INSTANCE(uriP))
     {
@@ -533,6 +579,9 @@ int object_getRegisterPayload(lwm2m_context_t * contextP,
     {
         size_t start;
         size_t length;
+#if SIERRA
+        LOG_ARG ("object_getRegisterPayload objID %d", objectP->objID);
+#endif
 
         if (objectP->objID == LWM2M_SECURITY_OBJECT_ID) continue;
 
@@ -579,6 +628,10 @@ int object_getRegisterPayload(lwm2m_context_t * contextP,
     }
 
     buffer[index] = 0;
+
+#if SIERRA
+    os_debug_data_dump( "register payload", buffer, index);
+#endif
 
     return index;
 }
@@ -686,10 +739,35 @@ int object_getServers(lwm2m_context_t * contextP)
     securityInstP = securityObjP->instanceList;
     while (securityInstP != NULL)
     {
+#if SIERRA
+        LOG_ARG("object_getServers securityInstP->id %d", securityInstP->id);
+
+        if (LWM2M_LIST_FIND(contextP->bootstrapServerList, securityInstP->id) == NULL)
+        {
+            LOG ("LWM2M_LIST_FIND(contextP->bootstrapServerList, securityInstP->id) == NULL");
+        }
+        else
+        {
+            LOG ("LWM2M_LIST_FIND(contextP->bootstrapServerList, securityInstP->id) != NULL");
+        }
+
+        if (LWM2M_LIST_FIND(contextP->serverList, securityInstP->id) == NULL)
+        {
+            LOG ("LWM2M_LIST_FIND(contextP->serverList, securityInstP->id) == NULL");
+        }
+        else
+        {
+            LOG ("LWM2M_LIST_FIND(contextP->serverList, securityInstP->id) != NULL");
+        }
+#endif
+
         if (LWM2M_LIST_FIND(contextP->bootstrapServerList, securityInstP->id) == NULL
          && LWM2M_LIST_FIND(contextP->serverList, securityInstP->id) == NULL)
         {
             // This server is new. eg created by last bootstrap
+#if SIERRA
+            LOG("This server is new. eg created by last bootstrap");
+#endif
 
             lwm2m_data_t * dataP;
             int size;
@@ -786,7 +864,7 @@ coap_status_t object_createInstance(lwm2m_context_t * contextP,
     targetP = (lwm2m_object_t *)LWM2M_LIST_FIND(contextP->objectList, uriP->objectId);
     if (NULL == targetP) return COAP_404_NOT_FOUND;
 
-    if (NULL == targetP->createFunc) 
+    if (NULL == targetP->createFunc)
     {
         return COAP_405_METHOD_NOT_ALLOWED;
     }
@@ -804,7 +882,7 @@ coap_status_t object_writeInstance(lwm2m_context_t * contextP,
     targetP = (lwm2m_object_t *)LWM2M_LIST_FIND(contextP->objectList, uriP->objectId);
     if (NULL == targetP) return COAP_404_NOT_FOUND;
 
-    if (NULL == targetP->writeFunc) 
+    if (NULL == targetP->writeFunc)
     {
         return COAP_405_METHOD_NOT_ALLOWED;
     }

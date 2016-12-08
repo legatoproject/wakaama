@@ -190,7 +190,7 @@ void bootstrap_step(lwm2m_context_t * contextP,
         default:
             break;
         }
-        LOG_ARG("Finalal status: %s", STR_STATUS(targetP->status));
+        LOG_ARG("Final status: %s", STR_STATUS(targetP->status));
         targetP = targetP->next;
     }
 }
@@ -349,6 +349,32 @@ static void prv_tagAllServer(lwm2m_context_t * contextP,
     }
 }
 
+#if SIERRA
+#define CODE_TO_STRING(X)   case X : return #X
+
+static const char* prv_status_to_string(int status)
+{
+    switch(status)
+    {
+    CODE_TO_STRING(COAP_NO_ERROR);
+    CODE_TO_STRING(COAP_IGNORE);
+    CODE_TO_STRING(COAP_201_CREATED);
+    CODE_TO_STRING(COAP_202_DELETED);
+    CODE_TO_STRING(COAP_204_CHANGED);
+    CODE_TO_STRING(COAP_205_CONTENT);
+    CODE_TO_STRING(COAP_400_BAD_REQUEST);
+    CODE_TO_STRING(COAP_401_UNAUTHORIZED);
+    CODE_TO_STRING(COAP_404_NOT_FOUND);
+    CODE_TO_STRING(COAP_405_METHOD_NOT_ALLOWED);
+    CODE_TO_STRING(COAP_406_NOT_ACCEPTABLE);
+    CODE_TO_STRING(COAP_500_INTERNAL_SERVER_ERROR);
+    CODE_TO_STRING(COAP_501_NOT_IMPLEMENTED);
+    CODE_TO_STRING(COAP_503_SERVICE_UNAVAILABLE);
+    default: return "";
+    }
+}
+#endif /* SIERRA */
+
 coap_status_t bootstrap_handleCommand(lwm2m_context_t * contextP,
                                       lwm2m_uri_t * uriP,
                                       lwm2m_server_t * serverP,
@@ -429,7 +455,7 @@ coap_status_t bootstrap_handleCommand(lwm2m_context_t * contextP,
                                     prv_tagServer(contextP, dataP[i].id);
                                 }
                             }
-                            
+
                             if(result != COAP_204_CHANGED) // Stop object create or write when result is error
                             {
                                 break;
@@ -454,6 +480,10 @@ coap_status_t bootstrap_handleCommand(lwm2m_context_t * contextP,
             }
             else
             {
+#if SIERRA
+                LOG_ARG ("DELETE / %d / %d / %d",
+                        uriP->objectId, uriP->instanceId, uriP->resourceId);
+#endif /* SIERRA */
                 result = object_delete(contextP, uriP);
                 if (uriP->objectId == LWM2M_SECURITY_OBJECT_ID
                  && result == COAP_202_DELETED)
@@ -488,6 +518,9 @@ coap_status_t bootstrap_handleCommand(lwm2m_context_t * contextP,
         }
     }
     LOG_ARG("Server status: %s", STR_STATUS(serverP->status));
+#if SIERRA
+    LOG_ARG("%s", prv_status_to_string (result));
+#endif /* SIERRA */
 
     return result;
 }

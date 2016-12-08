@@ -13,7 +13,7 @@
  * Contributors:
  *    David Navarro, Intel Corporation - initial API and implementation
  *    Toby Jaffey - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 /*
@@ -499,7 +499,12 @@ int utils_intCopy(char * buffer,
     if (len == 0) return -1;
     if (len > length + 1) return -1;
 
+#if SIERRA
+    //#217: Lifetime values greater than 99999 are not well managed
+    memcpy(buffer, str, len);
+#else
     memcpy(buffer, str + _PRV_INT32_MAX_STR_LEN - len, len);
+#endif
     buffer[len] = 0;
 
     return len;
@@ -508,7 +513,7 @@ int utils_intCopy(char * buffer,
 void utils_copyValue(void * dst,
                      const void * src,
                      size_t len)
-{		
+{
 #ifdef LWM2M_BIG_ENDIAN
     memcpy(dst, src, len);
 #else
@@ -738,7 +743,7 @@ static size_t prv_getBase64Size(size_t dataLen)
 }
 
 size_t utils_base64Encode(uint8_t * dataP,
-                          size_t dataLen, 
+                          size_t dataLen,
                           uint8_t * bufferP,
                           size_t bufferLen)
 {
@@ -802,7 +807,7 @@ size_t utils_opaqueToBase64(uint8_t * dataP,
         lwm2m_free(*bufferP);
         *bufferP = NULL;
     }
- 
+
     return result_len;
 }
 
