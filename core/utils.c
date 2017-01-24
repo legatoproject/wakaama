@@ -499,12 +499,7 @@ int utils_intCopy(char * buffer,
     if (len == 0) return -1;
     if (len > length + 1) return -1;
 
-#if SIERRA
-    //#217: Lifetime values greater than 99999 are not well managed
     memcpy(buffer, str, len);
-#else
-    memcpy(buffer, str + _PRV_INT32_MAX_STR_LEN - len, len);
-#endif
     buffer[len] = 0;
 
     return len;

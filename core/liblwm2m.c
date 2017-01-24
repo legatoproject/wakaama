@@ -114,10 +114,23 @@ static void prv_deleteServerList(lwm2m_context_t * context)
     }
 }
 
-static void prv_deleteBootstrapServerList(lwm2m_context_t * contextP)
+static void prv_deleteBootstrapServer(lwm2m_server_t * serverP)
 {
-    LWM2M_LIST_FREE(contextP->bootstrapServerList);
-    contextP->bootstrapServerList = NULL;
+    // TODO should we free location as in prv_deleteServer ?
+    // TODO should we parse transaction and observation to remove the ones related to this server ?
+    free_block1_buffer(serverP->block1Data);
+    lwm2m_free(serverP);
+}
+
+static void prv_deleteBootstrapServerList(lwm2m_context_t * context)
+{
+    while (NULL != context->bootstrapServerList)
+    {
+        lwm2m_server_t * server;
+        server = context->bootstrapServerList;
+        context->bootstrapServerList = server->next;
+        prv_deleteBootstrapServer(server);
+    }
 }
 
 static void prv_deleteObservedList(lwm2m_context_t * contextP)
@@ -225,7 +238,7 @@ static int prv_refreshServerList(lwm2m_context_t * contextP)
         if (!targetP->dirty)
         {
             // TODO: Should we revert the status to STATE_DEREGISTERED ?
-            contextP->serverList = (lwm2m_server_t *)LWM2M_LIST_ADD(contextP->serverList, targetP);;
+            contextP->serverList = (lwm2m_server_t *)LWM2M_LIST_ADD(contextP->serverList, targetP);
         }
         else
         {

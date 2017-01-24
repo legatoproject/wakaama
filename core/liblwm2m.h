@@ -312,6 +312,11 @@ struct _lwm2m_data_t
             size_t         count;
             lwm2m_data_t * array;
         } asChildren;
+        struct
+        {
+            uint16_t objectId;
+            uint16_t objectInstanceId;
+        } asObjLink;
     } value;
 };
 
@@ -320,8 +325,14 @@ typedef enum
     LWM2M_CONTENT_TEXT      = 0,        // Also used as undefined
     LWM2M_CONTENT_LINK      = 40,
     LWM2M_CONTENT_OPAQUE    = 42,
+#if SIERRA
+    /* Keep old values because server does not support new ones */
     LWM2M_CONTENT_TLV       = 1542,     // Temporary value
     LWM2M_CONTENT_JSON      = 1543      // Temporary value
+#else
+    LWM2M_CONTENT_TLV       = 11542,
+    LWM2M_CONTENT_JSON      = 11543
+#endif
 } lwm2m_media_type_t;
 
 lwm2m_data_t * lwm2m_data_new(int size);
@@ -338,6 +349,7 @@ void lwm2m_data_encode_float(double value, lwm2m_data_t * dataP);
 int lwm2m_data_decode_float(const lwm2m_data_t * dataP, double * valueP);
 void lwm2m_data_encode_bool(bool value, lwm2m_data_t * dataP);
 int lwm2m_data_decode_bool(const lwm2m_data_t * dataP, bool * valueP);
+void lwm2m_data_encode_objlink(uint16_t objectId, uint16_t objectInstanceId, lwm2m_data_t * dataP);
 void lwm2m_data_encode_instances(lwm2m_data_t * subDataP, size_t count, lwm2m_data_t * dataP);
 void lwm2m_data_include(lwm2m_data_t * subDataP, size_t count, lwm2m_data_t * dataP);
 
