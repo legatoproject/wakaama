@@ -172,7 +172,9 @@ static uint8_t prv_register(lwm2m_context_t * contextP,
 
     if (query_length == 0) return COAP_500_INTERNAL_SERVER_ERROR;
 
+#if SIERRA
     LOG_ARG ("server->lifetime %d", server->lifetime);
+#endif
     if (0 != server->lifetime)
     {
         int res;
