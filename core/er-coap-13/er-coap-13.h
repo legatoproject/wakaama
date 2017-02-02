@@ -200,6 +200,11 @@ typedef enum {
   APPLICATION_SOAP_FASTINFOSET = 49,
   APPLICATION_JSON = 50,
   APPLICATION_X_OBIX_BINARY = 51
+#ifdef __C90__
+  ,CONTENT_TYPE_MAX = 0xFFFF /* For C90 compilers, else this enum is considered like a uint8_t
+                              * But LWM2M_CONTENT_TLV value is 1542 (defined in lwm2m_media_type_t)
+                              */
+#endif
 } coap_content_type_t;
 
 typedef struct _multi_option_t {
