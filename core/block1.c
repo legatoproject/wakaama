@@ -96,6 +96,9 @@ coap_status_t coap_block1_handler(lwm2m_block1_data_t ** pBlock1Data,
        // If this is a retransmission, we already did that.
        if (block1Data->lastmid != mid)
        {
+          uint8_t * oldBuffer;
+          size_t oldSize;
+
            if (block1Data->block1bufferSize != blockSize * blockNum)
           {
               // we don't receive block in right order
@@ -108,8 +111,8 @@ coap_status_t coap_block1_handler(lwm2m_block1_data_t ** pBlock1Data,
               return COAP_413_ENTITY_TOO_LARGE;
           }
           // re-alloc new buffer
-          uint8_t * oldBuffer = block1Data->block1buffer;
-          size_t oldSize = block1Data->block1bufferSize;
+          oldBuffer = block1Data->block1buffer;
+          oldSize = block1Data->block1bufferSize;
           block1Data->block1bufferSize = oldSize+length;
           block1Data->block1buffer = lwm2m_malloc(block1Data->block1bufferSize);
           if (NULL == block1Data->block1buffer) return COAP_500_INTERNAL_SERVER_ERROR;

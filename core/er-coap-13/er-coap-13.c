@@ -119,12 +119,13 @@ static
 size_t
 coap_set_option_header(unsigned int delta, size_t length, uint8_t *buffer)
 {
+  unsigned int *x;
   size_t written = 0;
 
   buffer[0] = coap_option_nibble(delta)<<4 | coap_option_nibble(length);
 
   /* avoids code duplication without function overhead */
-  unsigned int *x = &delta;
+  x = &delta;
   do
   {
     if (*x>268)
@@ -609,7 +610,11 @@ coap_serialize_message(void *packet, uint8_t *buffer)
 coap_status_t
 coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
 {
+  uint8_t *current_option = NULL;
   coap_packet_t *const coap_pkt = (coap_packet_t *) packet;
+  unsigned int option_number = 0;
+  unsigned int option_delta = 0;
+  size_t option_length = 0;
 
   /* Initialize packet */
   memset(coap_pkt, 0, sizeof(coap_packet_t));
@@ -630,7 +635,7 @@ coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
     return BAD_REQUEST_4_00;
   }
 
-  uint8_t *current_option = data + COAP_HEADER_LEN;
+  current_option = data + COAP_HEADER_LEN;
 
   if (coap_pkt->token_len != 0)
   {
@@ -652,12 +657,13 @@ coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
   /* parse options */
   current_option += coap_pkt->token_len;
 
-  unsigned int option_number = 0;
-  unsigned int option_delta = 0;
-  size_t option_length = 0;
+  option_number = 0;
+  option_delta = 0;
+  option_length = 0;
 
   while (current_option < data+data_len)
   {
+    unsigned int *x;
     /* Payload marker 0xFF, currently only checking for 0xF* because rest is reserved */
     if ((current_option[0] & 0xF0)==0xF0)
     {
@@ -672,7 +678,7 @@ coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
     ++current_option;
 
     /* avoids code duplication without function overhead */
-    unsigned int *x = &option_delta;
+    x = &option_delta;
     do
     {
       if (*x==13)
@@ -1326,7 +1332,7 @@ coap_get_header_size(void *packet, uint32_t *size)
   coap_packet_t *const coap_pkt = (coap_packet_t *) packet;
 
   if (!IS_OPTION(coap_pkt, COAP_OPTION_SIZE)) return 0;
-  
+
   *size = coap_pkt->size;
   return 1;
 }

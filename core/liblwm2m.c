@@ -259,7 +259,6 @@ int lwm2m_configure(lwm2m_context_t * contextP,
 {
     int i;
     uint8_t found;
-
     LOG_ARG("endpointName: \"%s\", msisdn: \"%s\", altPath: \"%s\", numObject: %d", endpointName, msisdn, altPath, numObject);
     // This API can be called only once for now
     if (contextP->endpointName != NULL || contextP->objectList != NULL) return COAP_400_BAD_REQUEST;

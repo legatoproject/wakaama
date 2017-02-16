@@ -790,15 +790,15 @@ int object_getServers(lwm2m_context_t * contextP)
          && LWM2M_LIST_FIND(contextP->serverList, securityInstP->id) == NULL)
         {
             // This server is new. eg created by last bootstrap
-#if SIERRA
-            LOG("This server is new. eg created by last bootstrap");
-#endif
-
             lwm2m_data_t * dataP;
             int size;
             lwm2m_server_t * targetP;
             bool isBootstrap;
             int64_t value = 0;
+
+#if SIERRA
+            LOG("This server is new. eg created by last bootstrap");
+#endif
 
             size = 3;
             dataP = lwm2m_data_new(size);

@@ -306,8 +306,9 @@ typedef struct {
 #define COAP_SERIALIZE_BLOCK_OPTION(number, field, text)      \
     if (IS_OPTION(coap_pkt, number)) \
     { \
+      uint32_t block; \
       PRINTF(text" [%lu%s (%u B/blk)]\n", coap_pkt->field##_num, coap_pkt->field##_more ? "+" : "", coap_pkt->field##_size); \
-      uint32_t block = coap_pkt->field##_num << 4; \
+      block = coap_pkt->field##_num << 4; \
       if (coap_pkt->field##_more) block |= 0x8; \
       block |= 0xF & coap_log_2(coap_pkt->field##_size/16); \
       PRINTF(text" encoded: 0x%lX\n", block); \
