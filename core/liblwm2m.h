@@ -328,7 +328,8 @@ typedef enum
 #if SIERRA
     /* Keep old values because server does not support new ones */
     LWM2M_CONTENT_TLV       = 1542,     // Temporary value
-    LWM2M_CONTENT_JSON      = 1543      // Temporary value
+    LWM2M_CONTENT_JSON      = 1543,     // Temporary value
+    LWM2M_CONTENT_ZCBOR     = 12118
 #else
     LWM2M_CONTENT_TLV       = 11542,
     LWM2M_CONTENT_JSON      = 11543
@@ -702,6 +703,13 @@ int lwm2m_remove_object(lwm2m_context_t * contextP, uint16_t id);
 int lwm2m_update_registration(lwm2m_context_t * contextP, uint16_t shortServerID, bool withObjects);
 
 void lwm2m_resource_value_changed(lwm2m_context_t * contextP, lwm2m_uri_t * uriP);
+
+int lwm2m_data_push(lwm2m_context_t * contextP,
+                    uint16_t shortServerID,
+                    uint8_t * payload,
+                    size_t payloadLength,
+                    lwm2m_transaction_callback_t callback
+                   );
 #endif
 
 #ifdef LWM2M_SERVER_MODE

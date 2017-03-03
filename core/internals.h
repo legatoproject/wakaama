@@ -162,7 +162,10 @@
 #define URI_REGISTRATION_SEGMENT_LEN    2
 #define URI_BOOTSTRAP_SEGMENT           "bs"
 #define URI_BOOTSTRAP_SEGMENT_LEN       2
-
+#if SIERRA
+#define URI_DATAPUSH_SEGMENT            "push"
+#define URI_DATAPUSH_SEGMENT_LEN        4
+#endif
 #define QUERY_TEMPLATE      "ep="
 #define QUERY_LENGTH        3       // strlen("ep=")
 #define QUERY_SMS           "sms="

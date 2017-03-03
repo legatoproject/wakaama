@@ -95,7 +95,23 @@ Contains code snippets which are:
 #if SIERRA
 #include "lwm2mcore.h"
 #include "osDebug.h"
+
+#define PRV_QUERY_BUFFER_LENGTH 200
+
+typedef struct
+{
+    lwm2m_context_t * contextP;
+    lwm2m_server_t * serverP;
+    uint16_t mid;
+    uint8_t * bufferP;
+    size_t buffer_len;
+    unsigned int content_type;
+} push_state_t;
+
+static push_state_t current_push_state;
+
 #endif
+
 
 static void handle_reset(lwm2m_context_t * contextP,
                          void * fromSessionH,
@@ -197,6 +213,42 @@ static coap_status_t handle_request(lwm2m_context_t * contextP,
     return result;
 }
 
+#if SIERRA
+static lwm2m_transaction_t * prv_init_push_transaction
+(
+    lwm2m_context_t * contextP,
+    lwm2m_server_t * server
+)
+{
+    lwm2m_transaction_t * transaction;
+
+    char query[PRV_QUERY_BUFFER_LENGTH];
+    int query_length = 0;
+    int res;
+
+    query_length = utils_stringCopy(query, PRV_QUERY_BUFFER_LENGTH, "?ep=");
+    if (query_length < 0)
+    {
+        return -1;
+    }
+    res = utils_stringCopy(query + query_length, PRV_QUERY_BUFFER_LENGTH - query_length, contextP->endpointName);
+    if (res < 0)
+    {
+        return -1;
+    }
+
+    transaction = transaction_new(COAP_TYPE_CON, COAP_POST, NULL, NULL, contextP->nextMID++, 4, NULL, ENDPOINT_SERVER, (void *)server);
+    if (transaction == NULL) return NULL;
+
+    LOG_ARG("Server location = %s", server->location);
+    coap_set_header_uri_query(transaction->message, query);
+    coap_set_header_uri_path(transaction->message, "/"URI_DATAPUSH_SEGMENT);
+    coap_set_header_content_type(transaction->message, LWM2M_CONTENT_ZCBOR);
+
+    return transaction;
+}
+#endif
+
 /* This function is an adaptation of function coap_receive() from Erbium's er-coap-13-engine.c.
  * Erbium is Copyright (c) 2013, Institute for Pervasive Computing, ETH Zurich
  * All rights reserved.
@@ -209,6 +261,8 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
     coap_status_t coap_error_code = NO_ERROR;
     static coap_packet_t message[1];
     static coap_packet_t response[1];
+    push_state_t * push_stateP = &current_push_state;
+
 
     LOG("Entering");
     coap_error_code = coap_parse_message(message, buffer, (uint16_t)length);
@@ -400,6 +454,68 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 break;
 
             case COAP_TYPE_ACK:
+#if SIERRA
+                if (IS_OPTION(message, COAP_OPTION_BLOCK1) && (message->code == COAP_231_CONTINUE))
+                {
+                    lwm2m_transaction_t * transaction;
+                    uint32_t block1_num;
+                    uint8_t  block1_more;
+                    uint16_t block1_size;
+                    uint32_t next_offset;
+
+                    transaction = prv_init_push_transaction(push_stateP->contextP, push_stateP->serverP);
+                    if (transaction == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
+
+                    coap_packet_t *block1_resp = transaction->message;
+
+                    // parse block1 message.
+                    coap_get_header_block1(message, &block1_num, &block1_more, &block1_size, NULL);
+                    LOG_ARG("Blockwise: server acked NUM %u (SZX %u/ SZX Max%u) MORE %u", block1_num, block1_size, REST_MAX_CHUNK_SIZE, block1_more);
+
+                    uint32_t next_block = block1_num + 1;
+                    next_offset = next_block * block1_size;
+
+                    if (next_offset > push_stateP->buffer_len)
+                    {
+                        LOG_ARG("Error block offset %d out of scope - payloadLength is %d", next_offset, push_stateP->buffer_len);
+                        block1_resp->code = COAP_402_BAD_OPTION;
+                    }
+                    else
+                    {
+                        block1_size = MIN(block1_size, REST_MAX_CHUNK_SIZE);
+
+                        coap_set_header_block1(block1_resp, next_block, push_stateP->buffer_len - next_offset > block1_size, block1_size);
+
+                        LOG_ARG("Blockwise: device responds with NUM %u (SZX %u/ SZX Max%u) MORE %u OFFSET %u",
+                                block1_resp->block1_num,
+                                block1_resp->block1_size,
+                                REST_MAX_CHUNK_SIZE,
+                                block1_resp->block1_more,
+                                next_offset);
+
+                        coap_set_payload(block1_resp, push_stateP->bufferP + next_offset, MIN(push_stateP->buffer_len - next_offset, block1_size));
+                        coap_set_header_content_type(block1_resp, LWM2M_CONTENT_ZCBOR);
+                    }
+
+                    // Initiate the transaction.
+                    contextP->transactionList = (lwm2m_transaction_t *)LWM2M_LIST_ADD(contextP->transactionList, transaction);
+                    if (transaction_send(contextP, transaction) != 0)
+                    {
+                        LOG("transaction failed");
+                        /* TODO: end block transfer and inform user app */
+                        coap_error_code =  COAP_500_INTERNAL_SERVER_ERROR;
+                    }
+                }
+                else if (coap_error_code == COAP_204_CHANGED)
+                {
+                    // ToDo: use this for push ack
+                    LOG("All blocks transferred.");
+
+                    lwm2m_free(push_stateP->bufferP);
+                    push_stateP->bufferP = NULL;
+                    push_stateP->buffer_len = 0;
+                }
+#endif
                 transaction_handleResponse(contextP, fromSessionH, message, NULL);
                 break;
 
@@ -460,3 +576,107 @@ coap_status_t message_send(lwm2m_context_t * contextP,
     return result;
 }
 
+#if SIERRA
+static int prv_data_push(lwm2m_context_t * contextP,
+                        lwm2m_server_t * serverP,
+                        uint8_t * payloadP,
+                        size_t payload_len,
+                        lwm2m_transaction_callback_t callbackP
+                       )
+{
+    lwm2m_transaction_t * transaction;
+    push_state_t * push_stateP = &current_push_state;
+
+    transaction = prv_init_push_transaction(contextP, serverP);
+    if (transaction == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
+
+    /* set the payload type & payload */
+    if (payloadP != NULL)
+    {
+        /* initiate block transfer for a bigger block */
+        if (payload_len > REST_MAX_CHUNK_SIZE)
+        {
+            LOG_ARG("Initiate Blockwise transfer with block_size %u", REST_MAX_CHUNK_SIZE);
+            coap_set_header_block1(transaction->message, 0, 1, REST_MAX_CHUNK_SIZE);
+
+            push_stateP->contextP = contextP;
+            push_stateP->serverP = serverP;
+
+            /* save the response payload */
+            push_stateP->bufferP = (uint8_t *)lwm2m_malloc(payload_len);
+
+            if (push_stateP->bufferP == NULL)
+            {
+                LOG("push buffer allocation failed");
+                return COAP_500_INTERNAL_SERVER_ERROR;
+            }
+            else
+            {
+                LOG("save push buffer for block transfer");
+                push_stateP->buffer_len = payload_len;
+                memcpy(push_stateP->bufferP, payloadP, payload_len);
+                push_stateP->content_type = LWM2M_CONTENT_ZCBOR;
+            }
+        }
+        coap_set_payload(transaction->message, payloadP, MIN(payload_len, REST_MAX_CHUNK_SIZE));
+    }
+
+    // Notify when data push is acked.
+    transaction->callback = callbackP;
+
+    // Initiate the transaction.
+    contextP->transactionList = (lwm2m_transaction_t *)LWM2M_LIST_ADD(contextP->transactionList, transaction);
+    if (transaction_send(contextP, transaction) != 0)
+    {
+        return COAP_500_INTERNAL_SERVER_ERROR;
+    }
+
+    return COAP_NO_ERROR;
+}
+
+// Initiate a data push transaction at "/push"
+int lwm2m_data_push(lwm2m_context_t * contextP,
+                    uint16_t shortServerID,
+                    uint8_t * payloadP,
+                    size_t payload_len,
+                    lwm2m_transaction_callback_t callbackP
+                   )
+{
+    lwm2m_server_t * targetP;
+    int result = COAP_404_NOT_FOUND;
+
+    LOG_ARG("State: %s, shortServerID: %d", STR_STATE(contextP->state), shortServerID);
+
+    targetP = contextP->serverList;
+    if (targetP == NULL)
+    {
+        if (object_getServers(contextP) == -1)
+        {
+            LOG("No server found");
+            result = COAP_404_NOT_FOUND;
+        }
+    }
+
+    while (targetP != NULL)
+    {
+        if (targetP->shortID == shortServerID)
+        {
+            // found the server, trigger the data push transaction
+            if (targetP->status == STATE_REGISTERED)
+            {
+                // push the data
+                result = prv_data_push(contextP, targetP, payloadP, payload_len, callbackP);
+            }
+            else
+            {
+                LOG("Server unregistered");
+                result = COAP_400_BAD_REQUEST;
+            }
+        }
+        targetP = targetP->next;    
+    }
+
+    // no server found
+    return result;
+}
+#endif
