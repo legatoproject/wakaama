@@ -165,6 +165,9 @@ bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
 #define LWM2M_FIRMWARE_UPDATE_OBJECT_ID     5
 #define LWM2M_LOCATION_OBJECT_ID            6
 #define LWM2M_CONN_STATS_OBJECT_ID          7
+#if SIERRA
+#define LWM2M_SOFTWARE_UPDATE_OBJECT_ID     9
+#endif
 
 /*
  * Ressource IDs for the LWM2M Security Object
@@ -194,6 +197,9 @@ bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
 #define LWM2M_SERVER_STORING_ID     6
 #define LWM2M_SERVER_BINDING_ID     7
 #define LWM2M_SERVER_UPDATE_ID      8
+#if SIERRA
+#define LWM2M_SOFTWARE_UPDATE_OBJECT_ID     9
+#endif
 
 #define LWM2M_SECURITY_MODE_PRE_SHARED_KEY  0
 #define LWM2M_SECURITY_MODE_RAW_PUBLIC_KEY  1

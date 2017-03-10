@@ -19,6 +19,9 @@
 
 #include "internals.h"
 #include <float.h>
+#if SIERRA
+#include "osDebug.h"
+#endif
 
 // dataP array length is assumed to be 1.
 static size_t prv_textSerialize(lwm2m_data_t * dataP,
@@ -423,6 +426,9 @@ int lwm2m_data_parse(lwm2m_uri_t * uriP,
 {
     LOG_ARG("format: %s, bufferLen: %d", STR_MEDIA_TYPE(format), bufferLen);
     LOG_URI(uriP);
+#if SIERRA
+    os_debug_data_dump("received data", buffer, bufferLen);
+#endif
     switch (format)
     {
     case LWM2M_CONTENT_TEXT:
