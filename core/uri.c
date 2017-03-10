@@ -16,7 +16,7 @@
  *    Toby Jaffey - Please refer to git log
  *    Bosch Software Innovations GmbH - Please refer to git log
  *    Pascal Rieux - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 /*
@@ -327,3 +327,62 @@ int uri_toString(lwm2m_uri_t * uriP,
 
     return head;
 }
+
+#if SIERRA
+
+bool IsNumeric
+(
+    char * element,
+    size_t elementLength
+)
+{
+    int i;
+
+    for (i = 0; i < elementLength; i++)
+    {
+        if (!isdigit(element[i]))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool IsCoapUri
+(
+    multi_option_t *uriPath
+)
+{
+    multi_option_t *path;
+
+    if (uriPath == NULL)
+        return false;
+
+    if (!((strncmp("le_",    (char *)uriPath->data, 3) == 0) ||
+          (strncmp("lwm2m",  (char *)uriPath->data, 5) == 0) ||
+          (strncmp("legato", (char *)uriPath->data, 6) == 0)))
+    {
+        for (path = uriPath; path != NULL; path = path->next)
+        {
+            if (!IsNumeric((char *)path->data, path->len))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    for (path = uriPath->next; path != NULL; path = path->next)
+    {
+        if (!IsNumeric((char *)path->data, path->len))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+#endif

@@ -335,7 +335,8 @@ typedef enum
     LWM2M_CONTENT_JSON_OLD  = 1543,     // Keep old value for backward-compatibility
     LWM2M_CONTENT_JSON      = 11543
 #if SIERRA
-    ,LWM2M_CONTENT_ZCBOR     = 12118
+    ,LWM2M_CONTENT_CBOR     = 60,       // Temporary value
+    LWM2M_CONTENT_ZCBOR     = 12118
 #endif
 } lwm2m_media_type_t;
 
@@ -715,6 +716,16 @@ int lwm2m_data_push(lwm2m_context_t * contextP,
                     size_t payloadLength,
                     lwm2m_transaction_callback_t callback
                    );
+
+bool lwm2m_async_response(lwm2m_context_t * contextP,
+                          uint16_t shortServerId,
+                          uint16_t messageId,
+                          uint32_t code,
+                          uint8_t* token,
+                          uint8_t token_len,
+                          uint16_t content_type,
+                          uint8_t * payload,
+                          size_t payloadLength);
 #endif /* SIERRA */
 #endif
 
@@ -751,7 +762,6 @@ void lwm2m_set_bootstrap_callback(lwm2m_context_t * contextP, lwm2m_bootstrap_ca
 int lwm2m_bootstrap_delete(lwm2m_context_t * contextP, void * sessionH, lwm2m_uri_t * uriP);
 int lwm2m_bootstrap_write(lwm2m_context_t * contextP, void * sessionH, lwm2m_uri_t * uriP, lwm2m_media_type_t format, uint8_t * buffer, size_t length);
 int lwm2m_bootstrap_finish(lwm2m_context_t * contextP, void * sessionH);
-
 #endif
 
 #ifdef __cplusplus
