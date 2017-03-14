@@ -149,7 +149,8 @@ bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
 #define COAP_405_METHOD_NOT_ALLOWED     (uint8_t)0x85
 #define COAP_406_NOT_ACCEPTABLE         (uint8_t)0x86
 #define COAP_408_REQ_ENTITY_INCOMPLETE  (uint8_t)0x88
-#define COAP_413_ENTITY_TOO_LARGE       (uint8_t)0x8F
+#define COAP_412_PRECONDITION_FAILED    (uint8_t)0x8C
+#define COAP_413_ENTITY_TOO_LARGE       (uint8_t)0x8D
 #define COAP_500_INTERNAL_SERVER_ERROR  (uint8_t)0xA0
 #define COAP_501_NOT_IMPLEMENTED        (uint8_t)0xA1
 #define COAP_503_SERVICE_UNAVAILABLE    (uint8_t)0xA3
@@ -184,6 +185,7 @@ bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
 #define LWM2M_SECURITY_SMS_SERVER_NUMBER_ID   9
 #define LWM2M_SECURITY_SHORT_SERVER_ID        10
 #define LWM2M_SECURITY_HOLD_OFF_ID            11
+#define LWM2M_SECURITY_BOOTSTRAP_TIMEOUT_ID   12
 
 /*
  * Ressource IDs for the LWM2M Server Object
@@ -197,9 +199,6 @@ bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
 #define LWM2M_SERVER_STORING_ID     6
 #define LWM2M_SERVER_BINDING_ID     7
 #define LWM2M_SERVER_UPDATE_ID      8
-#if SIERRA
-#define LWM2M_SOFTWARE_UPDATE_OBJECT_ID     9
-#endif
 
 #define LWM2M_SECURITY_MODE_PRE_SHARED_KEY  0
 #define LWM2M_SECURITY_MODE_RAW_PUBLIC_KEY  1
@@ -331,14 +330,12 @@ typedef enum
     LWM2M_CONTENT_TEXT      = 0,        // Also used as undefined
     LWM2M_CONTENT_LINK      = 40,
     LWM2M_CONTENT_OPAQUE    = 42,
-#if SIERRA
-    /* Keep old values because server does not support new ones */
-    LWM2M_CONTENT_TLV       = 1542,     // Temporary value
-    LWM2M_CONTENT_JSON      = 1543,     // Temporary value
-    LWM2M_CONTENT_ZCBOR     = 12118
-#else
+    LWM2M_CONTENT_TLV_OLD   = 1542,     // Keep old value for backward-compatibility
     LWM2M_CONTENT_TLV       = 11542,
+    LWM2M_CONTENT_JSON_OLD  = 1543,     // Keep old value for backward-compatibility
     LWM2M_CONTENT_JSON      = 11543
+#if SIERRA
+    ,LWM2M_CONTENT_ZCBOR     = 12118
 #endif
 } lwm2m_media_type_t;
 
@@ -422,18 +419,19 @@ struct _lwm2m_object_t
 
 typedef enum
 {
-    STATE_DEREGISTERED = 0,   // not registered or boostrap not started
-    STATE_REG_PENDING,        // registration pending
-    STATE_REGISTERED,         // successfully registered
-    STATE_REG_FAILED,         // last registration failed
-    STATE_REG_UPDATE_PENDING, // registration update pending
-    STATE_REG_UPDATE_NEEDED,  // registration update required
-    STATE_DEREG_PENDING,      // deregistration pending
-    STATE_BS_HOLD_OFF,        // bootstrap hold off time
-    STATE_BS_INITIATED,       // bootstrap request sent
-    STATE_BS_PENDING,         // boostrap on going
-    STATE_BS_FINISHED,        // bootstrap done
-    STATE_BS_FAILED,          // bootstrap failed
+    STATE_DEREGISTERED = 0,        // not registered or boostrap not started
+    STATE_REG_PENDING,             // registration pending
+    STATE_REGISTERED,              // successfully registered
+    STATE_REG_FAILED,              // last registration failed
+    STATE_REG_UPDATE_PENDING,      // registration update pending
+    STATE_REG_UPDATE_NEEDED,       // registration update required
+    STATE_REG_FULL_UPDATE_NEEDED,  // registration update with objects required
+    STATE_DEREG_PENDING,           // deregistration pending
+    STATE_BS_HOLD_OFF,             // bootstrap hold off time
+    STATE_BS_INITIATED,            // bootstrap request sent
+    STATE_BS_PENDING,              // boostrap on going
+    STATE_BS_FINISHED,             // bootstrap done
+    STATE_BS_FAILED,               // bootstrap failed
 } lwm2m_status_t;
 
 typedef enum
@@ -710,12 +708,14 @@ int lwm2m_update_registration(lwm2m_context_t * contextP, uint16_t shortServerID
 
 void lwm2m_resource_value_changed(lwm2m_context_t * contextP, lwm2m_uri_t * uriP);
 
+#if SIERRA
 int lwm2m_data_push(lwm2m_context_t * contextP,
                     uint16_t shortServerID,
                     uint8_t * payload,
                     size_t payloadLength,
                     lwm2m_transaction_callback_t callback
                    );
+#endif /* SIERRA */
 #endif
 
 #ifdef LWM2M_SERVER_MODE

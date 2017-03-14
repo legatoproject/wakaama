@@ -587,6 +587,8 @@ int connection_rehandshake(dtls_connection_t *connP, bool sendCloseNotify) {
     if (connP->dtlsSession == NULL) {
         return 0;
     }
+
+    // reset current session
     dtls_peer_t * peer = dtls_get_peer(connP->dtlsContext, connP->dtlsSession);
     if (peer != NULL)
     {

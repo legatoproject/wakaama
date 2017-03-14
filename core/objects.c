@@ -248,6 +248,8 @@ coap_status_t object_read(lwm2m_context_t * contextP,
         if (size == 0)
         {
 #if SIERRA
+            // Temporary fix for
+            // #237: Object read returns an error if no object instance exist
             *lengthP = lwm2m_data_serialize(uriP, size, dataP, formatP, bufferP);
 #else
             *lengthP = 0;
@@ -331,6 +333,7 @@ coap_status_t object_execute(lwm2m_context_t * contextP,
     targetP = (lwm2m_object_t *)LWM2M_LIST_FIND(contextP->objectList, uriP->objectId);
     if (NULL == targetP) return COAP_404_NOT_FOUND;
     if (NULL == targetP->executeFunc) return COAP_405_METHOD_NOT_ALLOWED;
+    if (NULL == lwm2m_list_find(targetP->instanceList, uriP->instanceId)) return COAP_404_NOT_FOUND;
 
     return targetP->executeFunc(uriP->instanceId, uriP->resourceId, buffer, length, targetP);
 }
@@ -444,6 +447,7 @@ coap_status_t object_delete(lwm2m_context_t * contextP,
 
 coap_status_t object_discover(lwm2m_context_t * contextP,
                               lwm2m_uri_t * uriP,
+                              lwm2m_server_t * serverP,
                               uint8_t ** bufferP,
                               size_t * lengthP)
 {
@@ -469,7 +473,6 @@ coap_status_t object_discover(lwm2m_context_t * contextP,
             if (dataP == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
 
             dataP->id = uriP->resourceId;
-            uriP->flag &= ~LWM2M_URI_FLAG_RESOURCE_ID;
         }
 
         result = targetP->discoverFunc(uriP->instanceId, &size, &dataP, targetP);
@@ -510,7 +513,7 @@ coap_status_t object_discover(lwm2m_context_t * contextP,
     {
         int len;
 
-        len = discover_serialize(contextP, uriP, size, dataP, bufferP);
+        len = discover_serialize(contextP, uriP, serverP, size, dataP, bufferP);
         if (len <= 0) result = COAP_500_INTERNAL_SERVER_ERROR;
         else *lengthP = len;
     }
@@ -743,6 +746,7 @@ int object_getServers(lwm2m_context_t * contextP)
     lwm2m_list_t * securityInstP;   // instanceID of the server in the LWM2M Security Object
 
     LOG("Entering");
+
     for (objectP = contextP->objectList; objectP != NULL; objectP = objectP->next)
     {
         if (objectP->objID == LWM2M_SECURITY_OBJECT_ID)

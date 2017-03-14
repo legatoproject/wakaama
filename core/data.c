@@ -447,10 +447,16 @@ int lwm2m_data_parse(lwm2m_uri_t * uriP,
         (*dataP)->type = LWM2M_TYPE_OPAQUE;
         return prv_setBuffer(*dataP, buffer, bufferLen);
 
+#ifdef LWM2M_OLD_CONTENT_FORMAT_SUPPORT
+    case LWM2M_CONTENT_TLV_OLD:
+#endif
     case LWM2M_CONTENT_TLV:
         return tlv_parse(buffer, bufferLen, dataP);
 
 #ifdef LWM2M_SUPPORT_JSON
+#ifdef LWM2M_OLD_CONTENT_FORMAT_SUPPORT
+    case LWM2M_CONTENT_JSON_OLD:
+#endif
     case LWM2M_CONTENT_JSON:
         return json_parse(uriP, buffer, bufferLen, dataP);
 #endif
@@ -475,7 +481,7 @@ size_t lwm2m_data_serialize(lwm2m_uri_t * uriP,
      || *formatP == LWM2M_CONTENT_OPAQUE)
     {
         if (size != 1
-         || !LWM2M_URI_IS_SET_RESOURCE(uriP)
+         || (uriP != NULL && !LWM2M_URI_IS_SET_RESOURCE(uriP))
          || dataP->type == LWM2M_TYPE_OBJECT
          || dataP->type == LWM2M_TYPE_OBJECT_INSTANCE
          || dataP->type == LWM2M_TYPE_MULTIPLE_RESOURCE)
@@ -508,14 +514,10 @@ size_t lwm2m_data_serialize(lwm2m_uri_t * uriP,
 
     case LWM2M_CONTENT_TLV:
         {
-            uint8_t baseUriStr[URI_MAX_STRING_LEN];
-            size_t baseUriLen;
-            uri_depth_t rootLevel;
             bool isResourceInstance;
 
-            baseUriLen = uri_toString(uriP, baseUriStr, URI_MAX_STRING_LEN, &rootLevel);
-            if (baseUriLen <= 0) return 0;
-            if (rootLevel == URI_DEPTH_RESOURCE_INSTANCE)
+            if (uriP != NULL && LWM2M_URI_IS_SET_RESOURCE(uriP)
+             && (size != 1 || dataP->id != uriP->resourceId))
             {
                 isResourceInstance = true;
             }
@@ -528,7 +530,7 @@ size_t lwm2m_data_serialize(lwm2m_uri_t * uriP,
 
 #ifdef LWM2M_CLIENT_MODE
     case LWM2M_CONTENT_LINK:
-        return discover_serialize(NULL, uriP, size, dataP, bufferP);
+        return discover_serialize(NULL, uriP, NULL, size, dataP, bufferP);
 #endif
 #ifdef LWM2M_SUPPORT_JSON
     case LWM2M_CONTENT_JSON:
