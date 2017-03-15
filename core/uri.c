@@ -361,7 +361,8 @@ bool IsCoapUri
 
     if (!((strncmp("le_",    (char *)uriPath->data, 3) == 0) ||
           (strncmp("lwm2m",  (char *)uriPath->data, 5) == 0) ||
-          (strncmp("legato", (char *)uriPath->data, 6) == 0)))
+          (strncmp("legato", (char *)uriPath->data, 6) == 0) ||
+          (strncmp("bs",     (char *)uriPath->data, 2) == 0)))
     {
         for (path = uriPath; path != NULL; path = path->next)
         {
