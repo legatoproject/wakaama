@@ -716,8 +716,9 @@ int lwm2m_data_push(lwm2m_context_t * contextP,
                     uint16_t shortServerID,
                     uint8_t * payload,
                     size_t payloadLength,
-                    lwm2m_transaction_callback_t callback
-                   );
+                    lwm2m_media_type_t type,
+                    uint16_t * midP
+                    );
 
 bool lwm2m_async_response(lwm2m_context_t * contextP,
                           uint16_t shortServerId,

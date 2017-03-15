@@ -466,7 +466,7 @@ int transaction_send(lwm2m_context_t * contextP,
     {
         if (transacP->callback)
         {
-            transacP->callback(transacP, NULL);
+            transacP->callback(transacP, transacP->message);
         }
         transaction_remove(contextP, transacP);
         return -1;
