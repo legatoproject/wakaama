@@ -654,7 +654,7 @@ int object_getRegisterPayload(lwm2m_context_t * contextP,
     buffer[index] = 0;
 
 #if SIERRA
-    os_debug_data_dump( "register payload", buffer, index);
+    lwm2mcore_DataDump( "register payload", buffer, index);
 #endif
 
     return index;

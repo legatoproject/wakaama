@@ -93,8 +93,7 @@ Contains code snippets which are:
 #include <stdio.h>
 
 #if SIERRA
-#include "lwm2mcore.h"
-#include "osDebug.h"
+#include <lwm2mcore/lwm2mcore.h>
 
 #define PRV_QUERY_BUFFER_LENGTH 200
 
@@ -173,7 +172,7 @@ static coap_status_t handle_request(lwm2m_context_t * contextP,
         }
         else
         {
-            os_debug_data_dump("COAP Message URI", message->uri_path->data, message->uri_path->len);
+            lwm2mcore_DataDump("COAP Message URI", message->uri_path->data, message->uri_path->len);
 
             // Check if the prefix matches the legato app objects
             if (IsCoapUri(message->uri_path))
@@ -467,7 +466,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 LOG_ARG("response->mid = %d", response->mid);
                 LOG_ARG("response->token_len = %d", response->token_len);
 
-                os_debug_data_dump("COAP token", response->token, response->token_len);
+                lwm2mcore_DataDump("COAP token", response->token, response->token_len);
 
                 LOG_ARG("total payload length = %d", response->payload_len);
                 LOG_ARG("Block transfer %u/%u/%u @ %u bytes",

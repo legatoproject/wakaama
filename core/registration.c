@@ -183,7 +183,7 @@ static uint8_t prv_register(lwm2m_context_t * contextP,
 
 #if SIERRA
     /* Dump REGISTER data */
-    os_debug_data_dump( "register", query, query_length);
+    lwm2mcore_DataDump( "register", query, query_length);
 #endif
 
     if (server->sessionH == NULL)

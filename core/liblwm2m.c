@@ -57,7 +57,7 @@
 #include <stdio.h>
 
 #ifdef SIERRA
-#include "lwm2mcore.h"
+#include <lwm2mcore/lwm2mcore.h>
 #include "sessionManager.h"
 #endif
 

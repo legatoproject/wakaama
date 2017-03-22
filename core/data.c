@@ -20,7 +20,7 @@
 #include "internals.h"
 #include <float.h>
 #if SIERRA
-#include "osDebug.h"
+#include <lwm2mcore/lwm2mcore.h>
 #endif
 
 // dataP array length is assumed to be 1.
@@ -427,7 +427,7 @@ int lwm2m_data_parse(lwm2m_uri_t * uriP,
     LOG_ARG("format: %s, bufferLen: %d", STR_MEDIA_TYPE(format), bufferLen);
     LOG_URI(uriP);
 #if SIERRA
-    os_debug_data_dump("received data", buffer, bufferLen);
+    lwm2mcore_DataDump("received data", buffer, bufferLen);
 #endif
     switch (format)
     {
