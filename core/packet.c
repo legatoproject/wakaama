@@ -526,17 +526,19 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                     uint8_t  block1_more;
                     uint16_t block1_size;
                     uint32_t next_offset;
+                    coap_packet_t *block1_resp;
+                    uint32_t next_block;
 
                     transaction = prv_init_push_transaction(push_stateP->contextP, push_stateP->serverP);
                     if (transaction == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
 
-                    coap_packet_t *block1_resp = transaction->message;
+                    block1_resp = transaction->message;
 
                     // parse block1 message.
                     coap_get_header_block1(message, &block1_num, &block1_more, &block1_size, NULL);
                     LOG_ARG("Blockwise: server acked NUM %u (SZX %u/ SZX Max%u) MORE %u", block1_num, block1_size, REST_MAX_CHUNK_SIZE, block1_more);
 
-                    uint32_t next_block = block1_num + 1;
+                    next_block = block1_num + 1;
                     next_offset = next_block * block1_size;
 
                     if (next_offset > push_stateP->buffer_len)
@@ -629,6 +631,7 @@ bool prv_async_response(lwm2m_context_t * contextP,
 {
     lwm2m_transaction_t * transaction;
     async_state_t * async_stateP = &current_async_state;
+    coap_packet_t * response;
 
     /* initialize the transaction */
     transaction = transaction_new(COAP_TYPE_CON, COAP_GET, NULL, NULL, mid, token_len, token, ENDPOINT_SERVER, (void *)server);
@@ -669,7 +672,7 @@ bool prv_async_response(lwm2m_context_t * contextP,
         coap_set_payload(transaction->message, payload, MIN(payload_len, REST_MAX_CHUNK_SIZE));
     }
 
-    coap_packet_t * response = transaction->message;
+    response = transaction->message;
     LOG_ARG("total payload length = %d", response->payload_len);
     LOG_ARG("Block transfer %u/%u/%u @ %u bytes",
                                 response->block2_num,
