@@ -59,6 +59,11 @@
 #include <string.h>
 #include <stdio.h>
 
+#ifdef SIERRA
+#include <lwm2mcore/lwm2mcore.h>
+#include "sessionManager.h"
+#endif
+
 #define MAX_LOCATION_LENGTH 10      // strlen("/rd/65534") + 1
 
 #ifdef LWM2M_CLIENT_MODE
@@ -138,6 +143,10 @@ static void prv_handleRegistrationReply(lwm2m_transaction_t * transacP,
             targetP->location = coap_get_multi_option_as_string(packet->location_path);
 
             LOG("Registration successful");
+#if SIERRA
+            /* Notify that the device is registered */
+            SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_SUCCESS);
+#endif
         }
         else
         {

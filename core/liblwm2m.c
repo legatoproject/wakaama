@@ -478,10 +478,6 @@ next_step:
         case STATE_REGISTERED:
             contextP->state = STATE_READY;
             LOG_ARG ("STATE_REGISTERED -> %s", STR_STATE(contextP->state));
-#if SIERRA
-            /* Notify that the device is registered */
-            SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_SUCCESS);
-#endif
             break;
 
         case STATE_REG_FAILED:
