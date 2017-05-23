@@ -145,7 +145,7 @@ static void prv_handleRegistrationReply(lwm2m_transaction_t * transacP,
             LOG("Registration successful");
 #if SIERRA
             /* Notify that the device is registered */
-            SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_SUCCESS);
+            smanager_SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_SUCCESS);
 #endif
         }
         else

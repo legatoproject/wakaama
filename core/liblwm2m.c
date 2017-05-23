@@ -399,7 +399,7 @@ next_step:
         {
 #if SIERRA
             /* Notify that the device starts to bootstrap */
-            SendSessionEvent(EVENT_TYPE_BOOTSTRAP, EVENT_STATUS_STARTED);
+            smanager_SendSessionEvent(EVENT_TYPE_BOOTSTRAP, EVENT_STATUS_STARTED);
 #endif
             bootstrap_start(contextP);
             contextP->state = STATE_BOOTSTRAPPING;
@@ -413,7 +413,7 @@ next_step:
         {
 #if SIERRA
             /* Notify that the device fails to bootstrap */
-            SendSessionEvent(EVENT_TYPE_BOOTSTRAP, EVENT_STATUS_DONE_FAIL);
+            smanager_SendSessionEvent(EVENT_TYPE_BOOTSTRAP, EVENT_STATUS_DONE_FAIL);
 #endif
             return COAP_503_SERVICE_UNAVAILABLE;
         }
@@ -426,7 +426,7 @@ next_step:
         case STATE_BS_FINISHED:
 #if SIERRA
             /* Notify that the bootstrap succeeds */
-            SendSessionEvent(EVENT_TYPE_BOOTSTRAP, EVENT_STATUS_DONE_SUCCESS);
+            smanager_SendSessionEvent(EVENT_TYPE_BOOTSTRAP, EVENT_STATUS_DONE_SUCCESS);
 #endif
             contextP->state = STATE_INITIAL;
 #if SIERRA
@@ -438,7 +438,7 @@ next_step:
         case STATE_BS_FAILED:
 #if SIERRA
             /* Notify that the device fails to bootstrap */
-            SendSessionEvent(EVENT_TYPE_BOOTSTRAP, EVENT_STATUS_DONE_FAIL);
+            smanager_SendSessionEvent(EVENT_TYPE_BOOTSTRAP, EVENT_STATUS_DONE_FAIL);
 #endif
             return COAP_503_SERVICE_UNAVAILABLE;
 
@@ -452,7 +452,7 @@ next_step:
     case STATE_REGISTER_REQUIRED:
 #if SIERRA
         /* Notify that the device starts to register */
-        SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_STARTED);
+        smanager_SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_STARTED);
 #endif
         result = registration_start(contextP);
 #ifndef SIERRA
@@ -461,7 +461,7 @@ next_step:
         if (COAP_NO_ERROR != result)
         {
             /* Notify that the device fails to register */
-            SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_FAIL);
+            smanager_SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_FAIL);
             return result;
         }
 #endif
@@ -483,7 +483,7 @@ next_step:
         case STATE_REG_FAILED:
 #if SIERRA
             /* Notify that the device can not register */
-            SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_FAIL);
+            smanager_SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_FAIL);
 #endif
 
             // TODO avoid infinite loop by checking the bootstrap info is different
