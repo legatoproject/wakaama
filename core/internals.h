@@ -58,8 +58,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
+#ifdef SIERRA
+#include <platform/types.h>
+#else
 #include <stdbool.h>
-
+#endif
 #include "er-coap-13/er-coap-13.h"
 
 #ifdef LWM2M_WITH_LOGS

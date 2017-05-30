@@ -59,8 +59,12 @@ extern "C" {
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stdbool.h>
 #include <time.h>
+#ifdef SIERRA
+#include <platform/types.h>
+#else
+#include <stdbool.h>
+#endif
 
 #ifdef LWM2M_SERVER_MODE
 #ifndef LWM2M_SUPPORT_JSON
