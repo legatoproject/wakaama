@@ -15,15 +15,17 @@ add_definitions(${SHARED_DEFINITIONS} ${WAKAAMA_DEFINITIONS})
 include_directories (${WAKAAMA_SOURCES_DIR} ${SHARED_INCLUDE_DIRS})
 
 SET(SOURCES
-    bootstrap_server.c
-    bootstrap_info.c
-    bootstrap_info.h
+    ${CMAKE_CURRENT_LIST_DIR}/bootstrap_server.c
+    ${CMAKE_CURRENT_LIST_DIR}/bootstrap_info.c
+    ${CMAKE_CURRENT_LIST_DIR}/bootstrap_info.h
     )
 
 SET(AUXILIARY_FILES
-    bootstrap_server.ini)
+    ${CMAKE_CURRENT_LIST_DIR}/bootstrap_server.ini)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${AUXILIARY_FILES} ${WAKAAMA_SOURCES} ${SHARED_SOURCES})
 
 # Add WITH_LOGS to debug variant
 set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY COMPILE_DEFINITIONS $<$<CONFIG:Debug>:WITH_LOGS>)
+
+SOURCE_GROUP(wakaama FILES ${WAKAAMA_SOURCES})

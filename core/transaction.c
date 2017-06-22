@@ -141,36 +141,23 @@ static int prv_checkFinished(lwm2m_transaction_t * transacP,
     return 0;
 }
 
-lwm2m_transaction_t * transaction_new(coap_message_type_t type,
+lwm2m_transaction_t * transaction_new(void * sessionH,
                                       coap_method_t method,
                                       char * altPath,
                                       lwm2m_uri_t * uriP,
                                       uint16_t mID,
                                       uint8_t token_len,
-                                      uint8_t* token,
-                                      lwm2m_endpoint_type_t peerType,
-                                      void * peerP)
+                                      uint8_t* token)
 {
     lwm2m_transaction_t * transacP;
     int result;
 
-    LOG_ARG("type: %d, method: %d, altPath: \"%s\", mID: %d, token_len: %d",
-            type, method, altPath, mID, token_len);
+    LOG_ARG("method: %d, altPath: \"%s\", mID: %d, token_len: %d",
+            method, altPath, mID, token_len);
     LOG_URI(uriP);
 
-    // no transactions for ack or rst
-    if (COAP_TYPE_ACK == type || COAP_TYPE_RST == type) return NULL;
-
     // no transactions without peer
-    if (NULL == peerP) return NULL;
-
-    if (COAP_TYPE_NON == type)
-    {
-        // no transactions for NON responses
-        if (COAP_DELETE < method) return NULL;
-        // no transactions for NON request without token
-        if (0 == token_len) return NULL;
-    }
+    if (NULL == sessionH) return NULL;
 
     transacP = (lwm2m_transaction_t *)lwm2m_malloc(sizeof(lwm2m_transaction_t));
 
@@ -180,11 +167,11 @@ lwm2m_transaction_t * transaction_new(coap_message_type_t type,
     transacP->message = lwm2m_malloc(sizeof(coap_packet_t));
     if (NULL == transacP->message) goto error;
 
-    coap_init_message(transacP->message, type, method, mID);
+    coap_init_message(transacP->message, COAP_TYPE_CON, method, mID);
+
+    transacP->peerH = sessionH;
 
     transacP->mID = mID;
-    transacP->peerType = peerType;
-    transacP->peerP = peerP;
 
     if (altPath != NULL)
     {
@@ -193,16 +180,19 @@ lwm2m_transaction_t * transaction_new(coap_message_type_t type,
     }
     if (NULL != uriP)
     {
-        result = utils_intCopy(transacP->objStringID, LWM2M_STRING_ID_MAX_LEN, uriP->objectId);
-        if (result < 0) goto error;
+        char stringID[LWM2M_STRING_ID_MAX_LEN];
 
-        coap_set_header_uri_path_segment(transacP->message, transacP->objStringID);
+        result = utils_intToText(uriP->objectId, stringID, LWM2M_STRING_ID_MAX_LEN);
+        if (result == 0) goto error;
+        stringID[result] = 0;
+        coap_set_header_uri_path_segment(transacP->message, stringID);
 
         if (LWM2M_URI_IS_SET_INSTANCE(uriP))
         {
-            result = utils_intCopy(transacP->instanceStringID, LWM2M_STRING_ID_MAX_LEN, uriP->instanceId);
-            if (result < 0) goto error;
-            coap_set_header_uri_path_segment(transacP->message, transacP->instanceStringID);
+            result = utils_intToText(uriP->instanceId, stringID, LWM2M_STRING_ID_MAX_LEN);
+            if (result == 0) goto error;
+            stringID[result] = 0;
+            coap_set_header_uri_path_segment(transacP->message, stringID);
         }
         else
         {
@@ -213,9 +203,10 @@ lwm2m_transaction_t * transaction_new(coap_message_type_t type,
         }
         if (LWM2M_URI_IS_SET_RESOURCE(uriP))
         {
-            result = utils_intCopy(transacP->resourceStringID, LWM2M_STRING_ID_MAX_LEN, uriP->resourceId);
-            if (result < 0) goto error;
-            coap_set_header_uri_path_segment(transacP->message, transacP->resourceStringID);
+            result = utils_intToText(uriP->resourceId, stringID, LWM2M_STRING_ID_MAX_LEN);
+            if (result == 0) goto error;
+            stringID[result] = 0;
+            coap_set_header_uri_path_segment(transacP->message, stringID);
         }
     }
     if (0 < token_len)
@@ -280,36 +271,7 @@ bool transaction_handleResponse(lwm2m_context_t * contextP,
 
     while (NULL != transacP)
     {
-        void * targetSessionH;
-
-        targetSessionH = NULL;
-        switch (transacP->peerType)
-        {
-#ifdef LWM2M_BOOTSTRAP_SERVER_MODE
-        case ENDPOINT_UNKNOWN:
-            targetSessionH = transacP->peerP;
-            break;
-#endif
-#ifdef LWM2M_SERVER_MODE
-        case ENDPOINT_CLIENT:
-            targetSessionH = ((lwm2m_client_t *)transacP->peerP)->sessionH;
-            break;
-#endif
-
-#ifdef LWM2M_CLIENT_MODE
-        case ENDPOINT_SERVER:
-            if (NULL != transacP->peerP) 
-            {
-                targetSessionH = ((lwm2m_server_t *)transacP->peerP)->sessionH;
-            }
-            break;
-#endif
-
-        default:
-            break;
-        }
-
-        if (lwm2m_session_is_equal(fromSessionH, targetSessionH, contextP->userData) == true)
+        if (lwm2m_session_is_equal(fromSessionH, transacP->peerH, contextP->userData) == true)
         {
             if (!transacP->ack_received)
             {
@@ -425,33 +387,7 @@ int transaction_send(lwm2m_context_t * contextP,
 
         if (COAP_MAX_RETRANSMIT + 1 >= transacP->retrans_counter)
         {
-            void * targetSessionH = NULL;
-
-            switch (transacP->peerType)
-            {
-#ifdef LWM2M_BOOTSTRAP_SERVER_MODE
-            case ENDPOINT_UNKNOWN:
-                targetSessionH = transacP->peerP;
-                break;
-#endif
-#ifdef LWM2M_SERVER_MODE
-            case ENDPOINT_CLIENT:
-                targetSessionH = ((lwm2m_client_t *)transacP->peerP)->sessionH;
-                break;
-#endif
-#ifdef LWM2M_CLIENT_MODE
-            case ENDPOINT_SERVER:
-                if (NULL != transacP->peerP)
-                {
-                    targetSessionH = ((lwm2m_server_t *)transacP->peerP)->sessionH;
-                }
-                break;
-#endif
-            default:
-                return COAP_500_INTERNAL_SERVER_ERROR;
-            }
-
-            (void)lwm2m_buffer_send(targetSessionH, transacP->buffer, transacP->buffer_len, contextP->userData);
+            (void)lwm2m_buffer_send(transacP->peerH, transacP->buffer, transacP->buffer_len, contextP->userData);
 
             transacP->retrans_time += timeout;
             transacP->retrans_counter += 1;
@@ -466,7 +402,7 @@ int transaction_send(lwm2m_context_t * contextP,
     {
         if (transacP->callback)
         {
-            transacP->callback(transacP, transacP->message);
+            transacP->callback(transacP, NULL);
         }
         transaction_remove(contextP, transacP);
         return -1;

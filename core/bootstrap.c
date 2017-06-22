@@ -36,6 +36,7 @@ static void prv_handleResponse(lwm2m_server_t * bootstrapServer,
     {
         LOG("Received ACK/2.04, Bootstrap pending, waiting for DEL/PUT from BS server...");
         bootstrapServer->status = STATE_BS_PENDING;
+        bootstrapServer->registration = lwm2m_gettime() + COAP_EXCHANGE_LIFETIME;
     }
     else
     {
@@ -99,7 +100,7 @@ static void prv_requestBootstrap(lwm2m_context_t * context,
 
         LOG("Bootstrap server connection opened");
 
-        transaction = transaction_new(COAP_TYPE_CON, COAP_POST, NULL, NULL, context->nextMID++, 4, NULL, ENDPOINT_SERVER, (void *)bootstrapServer);
+        transaction = transaction_new(bootstrapServer->sessionH, COAP_POST, NULL, NULL, context->nextMID++, 4, NULL);
         if (transaction == NULL)
         {
             bootstrapServer->status = STATE_BS_FAILING;
@@ -162,7 +163,15 @@ void bootstrap_step(lwm2m_context_t * contextP,
             break;
 
         case STATE_BS_PENDING:
-            // waiting
+            if (targetP->registration <= currentTime)
+            {
+               targetP->status = STATE_BS_FAILING;
+               *timeoutP = 0;
+            }
+            else if (*timeoutP > targetP->registration - currentTime)
+            {
+                *timeoutP = targetP->registration - currentTime;
+            }
             break;
 
         case STATE_BS_FINISHING:
@@ -263,6 +272,7 @@ lwm2m_status_t bootstrap_getStatus(lwm2m_context_t * contextP)
             case STATE_BS_INITIATED:
             case STATE_BS_PENDING:
             case STATE_BS_FINISHING:
+            case STATE_BS_FAILING:
                 bs_status = STATE_BS_PENDING;
                 break;
 
@@ -297,7 +307,7 @@ static coap_status_t prv_checkServerStatus(lwm2m_server_t * serverP)
     case STATE_DEREGISTERED:
         // server initiated bootstrap
     case STATE_BS_PENDING:
-        // do nothing
+        serverP->registration = lwm2m_gettime() + COAP_EXCHANGE_LIFETIME;
         break;
 
     case STATE_BS_FINISHED:
@@ -652,7 +662,7 @@ static void prv_resultCallback(lwm2m_transaction_t * transacP,
 
     if (message == NULL)
     {
-        dataP->callback(transacP->peerP,
+        dataP->callback(transacP->peerH,
                         COAP_503_SERVICE_UNAVAILABLE,
                         uriP,
                         NULL,
@@ -662,7 +672,7 @@ static void prv_resultCallback(lwm2m_transaction_t * transacP,
     {
         coap_packet_t * packet = (coap_packet_t *)message;
 
-        dataP->callback(transacP->peerP,
+        dataP->callback(transacP->peerH,
                         packet->code,
                         uriP,
                         NULL,
@@ -679,7 +689,7 @@ int lwm2m_bootstrap_delete(lwm2m_context_t * contextP,
     bs_data_t * dataP;
 
     LOG_URI(uriP);
-    transaction = transaction_new(COAP_TYPE_CON, COAP_DELETE, NULL, uriP, contextP->nextMID++, 4, NULL, ENDPOINT_UNKNOWN, sessionH);
+    transaction = transaction_new(sessionH, COAP_DELETE, NULL, uriP, contextP->nextMID++, 4, NULL);
     if (transaction == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
 
     dataP = (bs_data_t *)lwm2m_malloc(sizeof(bs_data_t));
@@ -726,7 +736,7 @@ int lwm2m_bootstrap_write(lwm2m_context_t * contextP,
         return COAP_400_BAD_REQUEST;
     }
 
-    transaction = transaction_new(COAP_TYPE_CON, COAP_PUT, NULL, uriP, contextP->nextMID++, 4, NULL, ENDPOINT_UNKNOWN, sessionH);
+    transaction = transaction_new(sessionH, COAP_PUT, NULL, uriP, contextP->nextMID++, 4, NULL);
     if (transaction == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
 
     coap_set_header_content_type(transaction->message, format);
@@ -758,7 +768,7 @@ int lwm2m_bootstrap_finish(lwm2m_context_t * contextP,
     bs_data_t * dataP;
 
     LOG("Entering");
-    transaction = transaction_new(COAP_TYPE_CON, COAP_POST, NULL, NULL, contextP->nextMID++, 4, NULL, ENDPOINT_UNKNOWN, sessionH);
+    transaction = transaction_new(sessionH, COAP_POST, NULL, NULL, contextP->nextMID++, 4, NULL);
     if (transaction == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
 
     coap_set_header_uri_path(transaction->message, "/"URI_BOOTSTRAP_SEGMENT);

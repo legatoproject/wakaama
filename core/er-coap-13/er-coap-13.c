@@ -119,13 +119,12 @@ static
 size_t
 coap_set_option_header(unsigned int delta, size_t length, uint8_t *buffer)
 {
-  unsigned int *x;
   size_t written = 0;
+  unsigned int *x = &delta;
 
   buffer[0] = coap_option_nibble(delta)<<4 | coap_option_nibble(length);
 
   /* avoids code duplication without function overhead */
-  x = &delta;
   do
   {
     if (*x>268)
@@ -515,6 +514,12 @@ size_t coap_serialize_get_size(void *packet)
         length += COAP_MAX_OPTION_HEADER_LEN + coap_pkt->proxy_uri_len;
     }
 
+    if (coap_pkt->payload_len)
+    {
+        // Account for the payload marker.
+        length += 1;
+    }
+
     return length;
 }
 
@@ -610,11 +615,12 @@ coap_serialize_message(void *packet, uint8_t *buffer)
 coap_status_t
 coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
 {
-  uint8_t *current_option = NULL;
   coap_packet_t *const coap_pkt = (coap_packet_t *) packet;
+  uint8_t *current_option;
   unsigned int option_number = 0;
   unsigned int option_delta = 0;
   size_t option_length = 0;
+  unsigned int *x;
 
   /* Initialize packet */
   memset(coap_pkt, 0, sizeof(coap_packet_t));
@@ -657,13 +663,8 @@ coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
   /* parse options */
   current_option += coap_pkt->token_len;
 
-  option_number = 0;
-  option_delta = 0;
-  option_length = 0;
-
   while (current_option < data+data_len)
   {
-    unsigned int *x;
     /* Payload marker 0xFF, currently only checking for 0xF* because rest is reserved */
     if ((current_option[0] & 0xF0)==0xF0)
     {
@@ -699,7 +700,15 @@ coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
 
     option_number += option_delta;
 
-    PRINTF("OPTION %u (delta %u, len %u): ", option_number, option_delta, option_length);
+    if (current_option + option_length > data + data_len)
+    {
+        PRINTF("OPTION %u (delta %u, len %u) has invalid length.\n", option_number, option_delta, option_length);
+        return BAD_REQUEST_4_00;
+    }
+    else
+    {
+        PRINTF("OPTION %u (delta %u, len %u): ", option_number, option_delta, option_length);
+    }
 
     SET_OPTION(coap_pkt, option_number);
 
@@ -1332,7 +1341,7 @@ coap_get_header_size(void *packet, uint32_t *size)
   coap_packet_t *const coap_pkt = (coap_packet_t *) packet;
 
   if (!IS_OPTION(coap_pkt, COAP_OPTION_SIZE)) return 0;
-
+  
   *size = coap_pkt->size;
   return 1;
 }

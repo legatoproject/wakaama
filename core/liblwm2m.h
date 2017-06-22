@@ -18,6 +18,8 @@
  *    Julien Vermillard - Please refer to git log
  *    Bosch Software Innovations GmbH - Please refer to git log
  *    Pascal Rieux - Please refer to git log
+ *    Ville Skyttä - Please refer to git log
+ *
  *******************************************************************************/
 
 /*
@@ -175,7 +177,7 @@ bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
 #endif
 
 /*
- * Ressource IDs for the LWM2M Security Object
+ * Resource IDs for the LWM2M Security Object
  */
 #define LWM2M_SECURITY_URI_ID                 0
 #define LWM2M_SECURITY_BOOTSTRAP_ID           1
@@ -192,7 +194,7 @@ bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
 #define LWM2M_SECURITY_BOOTSTRAP_TIMEOUT_ID   12
 
 /*
- * Ressource IDs for the LWM2M Server Object
+ * Resource IDs for the LWM2M Server Object
  */
 #define LWM2M_SERVER_SHORT_ID_ID    0
 #define LWM2M_SERVER_LIFETIME_ID    1
@@ -346,7 +348,7 @@ typedef enum
 
 lwm2m_data_t * lwm2m_data_new(int size);
 int lwm2m_data_parse(lwm2m_uri_t * uriP, uint8_t * buffer, size_t bufferLen, lwm2m_media_type_t format, lwm2m_data_t ** dataP);
-size_t lwm2m_data_serialize(lwm2m_uri_t * uriP, int size, lwm2m_data_t * dataP, lwm2m_media_type_t * formatP, uint8_t ** bufferP);
+int lwm2m_data_serialize(lwm2m_uri_t * uriP, int size, lwm2m_data_t * dataP, lwm2m_media_type_t * formatP, uint8_t ** bufferP);
 void lwm2m_data_free(int size, lwm2m_data_t * dataP);
 
 void lwm2m_data_encode_string(const char * string, lwm2m_data_t * dataP);
@@ -572,13 +574,6 @@ typedef struct _lwm2m_client_
  * Adaptation of Erbium's coap_transaction_t
  */
 
-typedef enum
-{
-    ENDPOINT_UNKNOWN = 0,
-    ENDPOINT_CLIENT,
-    ENDPOINT_SERVER
-} lwm2m_endpoint_type_t;
-
 typedef struct _lwm2m_transaction_ lwm2m_transaction_t;
 
 typedef void (*lwm2m_transaction_callback_t) (lwm2m_transaction_t * transacP, void * message);
@@ -587,15 +582,11 @@ struct _lwm2m_transaction_
 {
     lwm2m_transaction_t * next;  // matches lwm2m_list_t::next
     uint16_t              mID;   // matches lwm2m_list_t::id
-    lwm2m_endpoint_type_t peerType;
-    void *                peerP;
+    void *                peerH;
     uint8_t               ack_received; // indicates, that the ACK was received
     time_t                response_timeout; // timeout to wait for response, if token is used. When 0, use calculated acknowledge timeout.
     uint8_t  retrans_counter;
     time_t   retrans_time;
-    char objStringID[LWM2M_STRING_ID_MAX_LEN];
-    char instanceStringID[LWM2M_STRING_ID_MAX_LEN];
-    char resourceStringID[LWM2M_STRING_ID_MAX_LEN];
     void * message;
     uint16_t buffer_len;
     uint8_t * buffer;
@@ -614,6 +605,7 @@ typedef struct _lwm2m_watcher_
     bool update;
     lwm2m_server_t * server;
     lwm2m_attributes_t * parameters;
+    lwm2m_media_type_t format;
     uint8_t token[8];
     size_t tokenLen;
     time_t lastTime;
@@ -769,6 +761,7 @@ void lwm2m_set_bootstrap_callback(lwm2m_context_t * contextP, lwm2m_bootstrap_ca
 int lwm2m_bootstrap_delete(lwm2m_context_t * contextP, void * sessionH, lwm2m_uri_t * uriP);
 int lwm2m_bootstrap_write(lwm2m_context_t * contextP, void * sessionH, lwm2m_uri_t * uriP, lwm2m_media_type_t format, uint8_t * buffer, size_t length);
 int lwm2m_bootstrap_finish(lwm2m_context_t * contextP, void * sessionH);
+
 #endif
 
 #ifdef __cplusplus

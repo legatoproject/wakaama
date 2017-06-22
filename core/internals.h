@@ -204,7 +204,7 @@
 #define REG_ATTR_CONTENT_KEY        "ct"
 #define REG_ATTR_CONTENT_KEY_LEN    2
 #define REG_ATTR_CONTENT_JSON       "11543"   // Temporary value
-#define REG_ATTR_CONTENT_JSON_LEN   4
+#define REG_ATTR_CONTENT_JSON_LEN   5
 
 #define ATTR_SERVER_ID_STR       "ep="
 #define ATTR_SERVER_ID_LEN       3
@@ -249,6 +249,7 @@
 
 typedef struct
 {
+    uint16_t clientID;
     lwm2m_uri_t uri;
     lwm2m_result_callback_t callback;
     void * userData;
@@ -294,7 +295,7 @@ coap_status_t object_createInstance(lwm2m_context_t * contextP, lwm2m_uri_t * ur
 coap_status_t object_writeInstance(lwm2m_context_t * contextP, lwm2m_uri_t * uriP, lwm2m_data_t * dataP);
 
 // defined in transaction.c
-lwm2m_transaction_t * transaction_new(coap_message_type_t type, coap_method_t method, char * altPath, lwm2m_uri_t * uriP, uint16_t mID, uint8_t token_len, uint8_t* token, lwm2m_endpoint_type_t peerType, void * peerP);
+lwm2m_transaction_t * transaction_new(void * sessionH, coap_method_t method, char * altPath, lwm2m_uri_t * uriP, uint16_t mID, uint8_t token_len, uint8_t* token);
 int transaction_send(lwm2m_context_t * contextP, lwm2m_transaction_t * transacP);
 void transaction_free(lwm2m_transaction_t * transacP);
 void transaction_remove(lwm2m_context_t * contextP, lwm2m_transaction_t * transacP);
@@ -309,8 +310,9 @@ coap_status_t observe_handleRequest(lwm2m_context_t * contextP, lwm2m_uri_t * ur
 void observe_cancel(lwm2m_context_t * contextP, uint16_t mid, void * fromSessionH);
 coap_status_t observe_setParameters(lwm2m_context_t * contextP, lwm2m_uri_t * uriP, lwm2m_server_t * serverP, lwm2m_attributes_t * attrP);
 void observe_step(lwm2m_context_t * contextP, time_t currentTime, time_t * timeoutP);
+void observe_clear(lwm2m_context_t * contextP, lwm2m_uri_t * uriP);
 bool observe_handleNotify(lwm2m_context_t * contextP, void * fromSessionH, coap_packet_t * message, coap_packet_t * response);
-void observe_remove(lwm2m_client_t * clientP, lwm2m_observation_t * observationP);
+void observe_remove(lwm2m_observation_t * observationP);
 lwm2m_observed_t * observe_findByUri(lwm2m_context_t * contextP, lwm2m_uri_t * uriP);
 
 // defined in registration.c
@@ -335,12 +337,12 @@ lwm2m_status_t bootstrap_getStatus(lwm2m_context_t * contextP);
 
 // defined in tlv.c
 int tlv_parse(uint8_t * buffer, size_t bufferLen, lwm2m_data_t ** dataP);
-size_t tlv_serialize(bool isResourceInstance, int size, lwm2m_data_t * dataP, uint8_t ** bufferP);
+int tlv_serialize(bool isResourceInstance, int size, lwm2m_data_t * dataP, uint8_t ** bufferP);
 
 // defined in json.c
 #ifdef LWM2M_SUPPORT_JSON
 int json_parse(lwm2m_uri_t * uriP, uint8_t * buffer, size_t bufferLen, lwm2m_data_t ** dataP);
-size_t json_serialize(lwm2m_uri_t * uriP, int size, lwm2m_data_t * tlvP, uint8_t ** bufferP);
+int json_serialize(lwm2m_uri_t * uriP, int size, lwm2m_data_t * tlvP, uint8_t ** bufferP);
 #endif
 
 // defined in discover.c
@@ -356,21 +358,11 @@ lwm2m_binding_t utils_stringToBinding(uint8_t *buffer, size_t length);
 lwm2m_media_type_t utils_convertMediaType(coap_content_type_t type);
 int utils_isAltPathValid(const char * altPath);
 int utils_stringCopy(char * buffer, size_t length, const char * str);
-int utils_intCopy(char * buffer, size_t length, int32_t value);
 size_t utils_intToText(int64_t data, uint8_t * string, size_t length);
 size_t utils_floatToText(double data, uint8_t * string, size_t length);
-int utils_plainTextToInt64(uint8_t * buffer, int length, int64_t * dataP);
-int utils_plainTextToFloat64(uint8_t * buffer, int length, double * dataP);
-size_t utils_int64ToPlainText(int64_t data, uint8_t ** bufferP);
-size_t utils_float64ToPlainText(double data, uint8_t ** bufferP);
-size_t utils_boolToPlainText(bool data, uint8_t ** bufferP);
+int utils_textToInt(uint8_t * buffer, int length, int64_t * dataP);
+int utils_textToFloat(uint8_t * buffer, int length, double * dataP);
 void utils_copyValue(void * dst, const void * src, size_t len);
-int utils_opaqueToInt(const uint8_t * buffer, size_t buffer_len, int64_t * dataP);
-int utils_opaqueToFloat(const uint8_t * buffer, size_t buffer_len, double * dataP);
-size_t utils_encodeInt(int64_t data, uint8_t data_buffer[_PRV_64BIT_BUFFER_SIZE]);
-size_t utils_encodeFloat(double data, uint8_t data_buffer[_PRV_64BIT_BUFFER_SIZE]);
-size_t utils_base64ToOpaque(uint8_t * dataP, size_t dataLen, uint8_t ** bufferP);
-size_t utils_opaqueToBase64(uint8_t * dataP, size_t dataLen, uint8_t ** bufferP);
 size_t utils_base64Encode(uint8_t * dataP, size_t dataLen, uint8_t * bufferP, size_t bufferLen);
 #ifdef LWM2M_CLIENT_MODE
 lwm2m_server_t * utils_findServer(lwm2m_context_t * contextP, void * fromSessionH);

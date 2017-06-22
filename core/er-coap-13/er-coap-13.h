@@ -50,15 +50,19 @@
  * Larger data must be handled by the resource and will be sent chunk-wise through a TCP stream or CoAP blocks.
  */
 #ifndef REST_MAX_CHUNK_SIZE
-#define REST_MAX_CHUNK_SIZE     1024
+#define REST_MAX_CHUNK_SIZE     128
 #endif
 
 #define COAP_DEFAULT_MAX_AGE                 60
 #define COAP_RESPONSE_TIMEOUT                2
 #define COAP_MAX_RETRANSMIT                  4
 #define COAP_ACK_RANDOM_FACTOR               1.5
+#define COAP_MAX_LATENCY                     100
+#define COAP_PROCESSING_DELAY                COAP_RESPONSE_TIMEOUT
 
 #define COAP_MAX_TRANSMIT_WAIT               ((COAP_RESPONSE_TIMEOUT * ( (1 << (COAP_MAX_RETRANSMIT + 1) ) - 1) * COAP_ACK_RANDOM_FACTOR))
+#define COAP_MAX_TRANSMIT_SPAN               ((COAP_RESPONSE_TIMEOUT * ( (1 << COAP_MAX_RETRANSMIT) - 1) * COAP_ACK_RANDOM_FACTOR))
+#define COAP_EXCHANGE_LIFETIME               (COAP_MAX_TRANSMIT_SPAN + (2 * COAP_MAX_LATENCY) + COAP_PROCESSING_DELAY)
 
 #define COAP_HEADER_LEN                      4 /* | version:0x03 type:0x0C tkl:0xF0 | code | mid:0x00FF | mid:0xFF00 | */
 #define COAP_ETAG_LEN                        8 /* The maximum number of bytes for the ETag */
@@ -306,9 +310,8 @@ typedef struct {
 #define COAP_SERIALIZE_BLOCK_OPTION(number, field, text)      \
     if (IS_OPTION(coap_pkt, number)) \
     { \
-      uint32_t block; \
+      uint32_t block = coap_pkt->field##_num << 4; \
       PRINTF(text" [%lu%s (%u B/blk)]\n", coap_pkt->field##_num, coap_pkt->field##_more ? "+" : "", coap_pkt->field##_size); \
-      block = coap_pkt->field##_num << 4; \
       if (coap_pkt->field##_more) block |= 0x8; \
       block |= 0xF & coap_log_2(coap_pkt->field##_size/16); \
       PRINTF(text" encoded: 0x%lX\n", block); \

@@ -291,7 +291,6 @@ static lwm2m_transaction_t * prv_init_push_transaction
 )
 {
     lwm2m_transaction_t * transaction;
-
     char query[PRV_QUERY_BUFFER_LENGTH];
     int query_length = 0;
     int res;
@@ -307,7 +306,7 @@ static lwm2m_transaction_t * prv_init_push_transaction
         return -1;
     }
 
-    transaction = transaction_new(COAP_TYPE_CON, COAP_POST, NULL, NULL, contextP->nextMID++, 4, NULL, ENDPOINT_SERVER, (void *)server);
+    transaction = transaction_new(server->sessionH, COAP_POST, NULL, NULL, contextP->nextMID++, 4, NULL);
     if (transaction == NULL) return NULL;
 
     LOG_ARG("Server location = %s", server->location);
@@ -479,7 +478,6 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                     LOG_ARG("Blockwise: block1 request NUM %u (SZX %u/ SZX Max%u) MORE %u", block1_num, block1_size, REST_MAX_CHUNK_SIZE, block1_more);
 
                     // handle block 1
-                    complete_buffer = NULL;
                     coap_error_code = coap_block1_handler(&serverP->block1Data, message->mid, message->payload, message->payload_len, block1_size, block1_num, block1_more, &complete_buffer, &complete_buffer_size);
 
                     // if payload is complete, replace it in the coap message.
@@ -554,6 +552,9 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
 #endif
 
                 coap_error_code = message_send(contextP, response, fromSessionH);
+                lwm2m_free(response->payload);
+                response->payload = NULL;
+                response->payload_len = 0;
             }
             else if (coap_error_code != COAP_IGNORE)
             {
@@ -718,7 +719,7 @@ bool prv_async_response(lwm2m_context_t * contextP,
     coap_packet_t * response;
 
     /* initialize the transaction */
-    transaction = transaction_new(COAP_TYPE_CON, COAP_GET, NULL, NULL, mid, token_len, token, ENDPOINT_SERVER, (void *)server);
+    transaction = transaction_new(server->sessionH, COAP_GET, NULL, NULL, mid, token_len, token);
     if (transaction == NULL) return false;
 
     /* set the result code */

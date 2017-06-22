@@ -72,7 +72,7 @@ lwm2m_context_t * lwm2m_init(void * userData)
     {
         memset(contextP, 0, sizeof(lwm2m_context_t));
         contextP->userData = userData;
-        srand(time(NULL));
+        srand((int)lwm2m_gettime());
         contextP->nextMID = rand();
     }
 
@@ -259,6 +259,7 @@ int lwm2m_configure(lwm2m_context_t * contextP,
 {
     int i;
     uint8_t found;
+
     LOG_ARG("endpointName: \"%s\", msisdn: \"%s\", altPath: \"%s\", numObject: %d", endpointName, msisdn, altPath, numObject);
     // This API can be called only once for now
     if (contextP->endpointName != NULL || contextP->objectList != NULL) return COAP_400_BAD_REQUEST;
@@ -477,7 +478,9 @@ next_step:
         {
         case STATE_REGISTERED:
             contextP->state = STATE_READY;
+#if SIERRA
             LOG_ARG ("STATE_REGISTERED -> %s", STR_STATE(contextP->state));
+#endif
             break;
 
         case STATE_REG_FAILED:
