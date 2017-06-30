@@ -513,9 +513,7 @@ int lwm2m_data_parse(lwm2m_uri_t * uriP,
 
     LOG_ARG("format: %s, bufferLen: %d", STR_MEDIA_TYPE(format), bufferLen);
     LOG_URI(uriP);
-#if SIERRA
-    lwm2mcore_DataDump("received data", buffer, bufferLen);
-#endif
+
     switch (format)
     {
     case LWM2M_CONTENT_TEXT:
