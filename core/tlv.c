@@ -336,6 +336,11 @@ int tlv_parse(uint8_t * buffer,
             }
         }
         *dataP = newTlvP;
+        if (dataP == NULL)
+        {
+           LOG("dataP is NULL.");
+           return 0;
+        }
 
         (*dataP)[size].type = type;
         (*dataP)[size].id = id;
