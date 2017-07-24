@@ -315,6 +315,12 @@ int tlv_parse(uint8_t * buffer,
 
     LOG_ARG("bufferLen: %d", bufferLen);
 
+    if (dataP == NULL)
+    {
+       LOG("dataP is NULL.");
+       return 0;
+    }
+
     *dataP = NULL;
 
     while (0 != (result = lwm2m_decode_TLV((uint8_t*)buffer + index, bufferLen - index, &type, &id, &dataIndex, &dataLen)))
@@ -335,6 +341,7 @@ int tlv_parse(uint8_t * buffer,
                 lwm2m_free(*dataP);
             }
         }
+
         *dataP = newTlvP;
         if (dataP == NULL)
         {
