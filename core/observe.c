@@ -317,10 +317,15 @@ coap_status_t observe_setParameters(lwm2m_context_t * contextP,
     lwm2m_watcher_t * watcherP;
 
     LOG_URI(uriP);
-    LOG_ARG("toSet: %08X, toClear: %08X, minPeriod: %d, maxPeriod: %d, greaterThan: %f, lessThan: %f, step: %f",
-             attrP->toSet, attrP->toClear, attrP->minPeriod, attrP->maxPeriod, attrP->greaterThan, attrP->lessThan, attrP->step);
+    LOG_ARG("toSet: %08X, toClear: %08X, minPeriod: %d, maxPeriod: %d,"
+            "greaterThan: %f, lessThan: %f, step: %f",
+             attrP->toSet, attrP->toClear, attrP->minPeriod,
+             attrP->maxPeriod, attrP->greaterThan, attrP->lessThan, attrP->step);
 
-    if (!LWM2M_URI_IS_SET_INSTANCE(uriP) && LWM2M_URI_IS_SET_RESOURCE(uriP)) return COAP_400_BAD_REQUEST;
+    if (!LWM2M_URI_IS_SET_INSTANCE(uriP) && LWM2M_URI_IS_SET_RESOURCE(uriP))
+    {
+        return COAP_400_BAD_REQUEST;
+    }
 
     result = object_checkReadable(contextP, uriP);
     if (COAP_205_CONTENT != result) return result;
@@ -335,7 +340,8 @@ coap_status_t observe_setParameters(lwm2m_context_t * contextP,
     if (watcherP == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
 
     // Check rule “lt” value + 2*”stp” values < “gt” value
-    if ((((attrP->toSet | (watcherP->parameters?watcherP->parameters->toSet:0)) & ~attrP->toClear) & ATTR_FLAG_NUMERIC) == ATTR_FLAG_NUMERIC)
+    if ((((attrP->toSet | (watcherP->parameters?watcherP->parameters->toSet:0)) & ~attrP->toClear)
+         & ATTR_FLAG_NUMERIC) == ATTR_FLAG_NUMERIC)
     {
         float gt;
         float lt;
@@ -345,7 +351,7 @@ coap_status_t observe_setParameters(lwm2m_context_t * contextP,
         {
             gt = attrP->greaterThan;
         }
-        else
+        else if (watcherP->parameters)
         {
             gt = watcherP->parameters->greaterThan;
         }
@@ -353,7 +359,7 @@ coap_status_t observe_setParameters(lwm2m_context_t * contextP,
         {
             lt = attrP->lessThan;
         }
-        else
+        else if (watcherP->parameters)
         {
             lt = watcherP->parameters->lessThan;
         }
@@ -361,7 +367,7 @@ coap_status_t observe_setParameters(lwm2m_context_t * contextP,
         {
             stp = attrP->step;
         }
-        else
+        else if (watcherP->parameters)
         {
             stp = watcherP->parameters->step;
         }
@@ -403,8 +409,11 @@ coap_status_t observe_setParameters(lwm2m_context_t * contextP,
         }
     }
 
-    LOG_ARG("Final toSet: %08X, minPeriod: %d, maxPeriod: %d, greaterThan: %f, lessThan: %f, step: %f",
-            watcherP->parameters->toSet, watcherP->parameters->minPeriod, watcherP->parameters->maxPeriod, watcherP->parameters->greaterThan, watcherP->parameters->lessThan, watcherP->parameters->step);
+    LOG_ARG("Final toSet: %08X, minPeriod: %d, maxPeriod: %d,"
+            "greaterThan: %f, lessThan: %f, step: %f",
+            watcherP->parameters->toSet, watcherP->parameters->minPeriod,
+            watcherP->parameters->maxPeriod, watcherP->parameters->greaterThan,
+            watcherP->parameters->lessThan, watcherP->parameters->step);
 
     return COAP_204_CHANGED;
 }
@@ -552,7 +561,8 @@ void observe_step(lwm2m_context_t * contextP,
                      && watcherP->parameters != NULL
                      && (watcherP->parameters->toSet & ATTR_FLAG_NUMERIC) != 0)
                     {
-                        if ((watcherP->parameters->toSet & LWM2M_ATTR_FLAG_LESS_THAN) != 0)
+                        if ((NULL != dataP)
+                            && (watcherP->parameters->toSet & LWM2M_ATTR_FLAG_LESS_THAN) != 0)
                         {
                             LOG("Checking lower threshold");
                             // Did we cross the lower threshold ?
@@ -582,7 +592,8 @@ void observe_step(lwm2m_context_t * contextP,
                                 break;
                             }
                         }
-                        if ((watcherP->parameters->toSet & LWM2M_ATTR_FLAG_GREATER_THAN) != 0)
+                        if ((NULL != dataP)
+                            && (watcherP->parameters->toSet & LWM2M_ATTR_FLAG_GREATER_THAN) != 0)
                         {
                             LOG("Checking upper threshold");
                             // Did we cross the upper threshold ?
@@ -612,7 +623,8 @@ void observe_step(lwm2m_context_t * contextP,
                                 break;
                             }
                         }
-                        if ((watcherP->parameters->toSet & LWM2M_ATTR_FLAG_STEP) != 0)
+                        if ((NULL != dataP)
+                            && (watcherP->parameters->toSet & LWM2M_ATTR_FLAG_STEP) != 0)
                         {
                             LOG("Checking step");
 

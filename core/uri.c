@@ -154,11 +154,18 @@ lwm2m_uri_t * uri_decode(char * altPath,
         }
     }
 
-    readNum = uri_getNumber(uriPath->data, uriPath->len);
-    if (readNum < 0 || readNum > LWM2M_MAX_ID) goto error;
-    uriP->objectId = (uint16_t)readNum;
-    uriP->flag |= LWM2M_URI_FLAG_OBJECT_ID;
-    uriPath = uriPath->next;
+    if (NULL != uriPath)
+    {
+        readNum = uri_getNumber(uriPath->data, uriPath->len);
+        if (readNum < 0 || readNum > LWM2M_MAX_ID) goto error;
+        uriP->objectId = (uint16_t)readNum;
+        uriP->flag |= LWM2M_URI_FLAG_OBJECT_ID;
+        uriPath = uriPath->next;
+    }
+    else
+    {
+        LOG("uriPath is NULL");
+    }
 
     if ((uriP->flag & LWM2M_URI_MASK_TYPE) == LWM2M_URI_FLAG_REGISTRATION)
     {

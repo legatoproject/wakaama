@@ -149,7 +149,7 @@ static coap_status_t handle_request(lwm2m_context_t * contextP,
                                     coap_packet_t * message,
                                     coap_packet_t * response)
 {
-    lwm2m_uri_t * uriP;
+    lwm2m_uri_t * uriP = NULL;
     coap_status_t result = COAP_IGNORE;
 
 #if SIERRA
@@ -161,24 +161,26 @@ static coap_status_t handle_request(lwm2m_context_t * contextP,
     LOG("Entering");
 
 #if SIERRA
-    if (message->uri_path == NULL)
+    if (NULL == message->uri_path)
     {
         LOG ("No URI available for this request.");
     }
     else
     {
-        if (message->uri_path->data == NULL)
+        if (NULL == message->uri_path->data)
         {
             LOG ("No payload in the URI.");
         }
         else
         {
-            lwm2mcore_DataDump("COAP Message URI", message->uri_path->data, message->uri_path->len);
+            lwm2mcore_DataDump("COAP Message URI",
+                                message->uri_path->data, message->uri_path->len);
 
             // Check if the prefix matches the legato app objects
             if (IsCoapUri(message->uri_path))
             {
-                if (is_block_transfer(message, &block_num, &block_size, &block_offset) &&  (block_num != 0))
+                if (is_block_transfer(message, &block_num, &block_size,
+                                      &block_offset) &&  (block_num != 0))
                 {
                     async_state_t * async_stateP = &current_async_state;
                     coap_set_header_content_type(response, async_stateP->content_type);
@@ -202,12 +204,29 @@ static coap_status_t handle_request(lwm2m_context_t * contextP,
 #endif
 
 #ifdef LWM2M_CLIENT_MODE
-    uriP = uri_decode(contextP->altPath, message->uri_path);
+    if (NULL == message->uri_path)
+    {
+        LOG ("No URI available for this request.");
+    }
+    else
+    {
+        uriP = uri_decode(contextP->altPath, message->uri_path);
+    }
 #else
-    uriP = uri_decode(NULL, message->uri_path);
+    if (NULL == message->uri_path)
+    {
+        LOG ("No URI available for this request.");
+    }
+    else
+    {
+        uriP = uri_decode(NULL, message->uri_path);
+    }
 #endif
 
-    if (uriP == NULL) return COAP_400_BAD_REQUEST;
+    if (NULL == uriP)
+    {
+        return COAP_400_BAD_REQUEST;
+    }
 
     switch(uriP->flag & LWM2M_URI_MASK_TYPE)
     {
@@ -217,7 +236,7 @@ static coap_status_t handle_request(lwm2m_context_t * contextP,
         lwm2m_server_t * serverP;
 
         serverP = utils_findServer(contextP, fromSessionH);
-        if (serverP != NULL)
+        if (NULL != serverP)
         {
             result = dm_handleRequest(contextP, uriP, serverP, message, response);
         }
@@ -225,7 +244,7 @@ static coap_status_t handle_request(lwm2m_context_t * contextP,
         else
         {
             serverP = utils_findBootstrapServer(contextP, fromSessionH);
-            if (serverP != NULL)
+            if (NULL != serverP)
             {
                 result = bootstrap_handleCommand(contextP, uriP, serverP, message, response);
             }
