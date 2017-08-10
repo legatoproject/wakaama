@@ -744,6 +744,11 @@ bool prv_async_response(lwm2m_context_t * contextP,
             if (async_stateP->bufferP == NULL)
             {
                 LOG("async buffer allocation failed");
+                if (transaction)
+                {
+                    transaction_free(transaction);
+                }
+
                 return false;
             }
             else
@@ -908,6 +913,11 @@ static int prv_data_push(lwm2m_context_t * contextP,
             if (push_stateP->bufferP == NULL)
             {
                 LOG("push buffer allocation failed");
+                if (transaction)
+                {
+                    transaction_free(transaction);
+                }
+
                 return COAP_500_INTERNAL_SERVER_ERROR;
             }
             else

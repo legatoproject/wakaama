@@ -705,8 +705,14 @@ void observe_step(lwm2m_context_t * contextP,
                         }
                         else
                         {
-                            if (COAP_205_CONTENT != object_read(contextP, &targetP->uri, &(watcherP->format), &buffer, &length))
+                            if (COAP_205_CONTENT != object_read(contextP, &targetP->uri,
+                                 &(watcherP->format), &buffer, &length))
                             {
+                                if (buffer)
+                                {
+                                   lwm2m_free(buffer);
+                                }
+
                                 buffer = NULL;
                                 break;
                             }
