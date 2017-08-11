@@ -519,7 +519,7 @@ int tlv_serialize(bool isResourceInstance,
                 uint8_t buf[4];
                 uint32_t v = dataP[i].value.asObjLink.objectId;
                 v <<= 16;
-                v |= dataP[i].value.asObjLink.objectInstanceId;
+                v |= (((uint32_t) dataP[i].value.asObjLink.objectInstanceId) & 0x0000FFFF);
                 for (k = 3; k >= 0; --k) {
                     buf[k] = (uint8_t)(v & 0xFF);
                     v >>= 8;

@@ -608,7 +608,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                     uint32_t next_block;
 
                     transaction = prv_init_push_transaction(push_stateP->contextP, push_stateP->serverP, push_stateP->content_type);
-                    if (transaction == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
+                    if (transaction == NULL) return;
 
                     block1_resp = transaction->message;
 

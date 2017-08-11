@@ -92,7 +92,7 @@ coap_parse_int_option(uint8_t *bytes, size_t length)
   while (i<length)
   {
     var <<= 8;
-    var |= bytes[i++];
+    var |= (((uint32_t) bytes[i++]) & 0x000000FF);
   }
   return var;
 }
