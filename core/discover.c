@@ -185,6 +185,13 @@ static int prv_serializeLinkData(lwm2m_context_t * contextP,
         if (parentUriLen > 0)
         {
             if (bufferLen - head < parentUriLen) return -1;
+
+            // parentUriLen should be less than URI_MAX_STRING_LEN.
+            if (URI_MAX_STRING_LEN <= parentUriLen)
+            {
+                return -1;
+            }
+
             memcpy(buffer + head, parentUriStr, parentUriLen);
             head += parentUriLen;
         }
@@ -247,7 +254,16 @@ static int prv_serializeLinkData(lwm2m_context_t * contextP,
         }
 
         if (URI_MAX_STRING_LEN - uriLen < LINK_URI_SEPARATOR_SIZE) return -1;
-        memcpy(uriStr + uriLen, LINK_URI_SEPARATOR, LINK_URI_SEPARATOR_SIZE);
+
+        if (uriLen < URI_MAX_STRING_LEN)
+        {
+            memcpy(uriStr + uriLen, LINK_URI_SEPARATOR, LINK_URI_SEPARATOR_SIZE);
+        }
+        else
+        {
+            return -1;
+        }
+
         uriLen += LINK_URI_SEPARATOR_SIZE;
 
         res = utils_intToText(tlvP->id, uriStr + uriLen, URI_MAX_STRING_LEN - uriLen);
@@ -323,7 +339,7 @@ int discover_serialize(lwm2m_context_t * contextP,
 
         // get object level attributes
         objParamP = prv_findAttributes(contextP, &tempUri, serverP);
-        
+
         // get object instance level attributes
         tempUri.instanceId = uriP->instanceId;
         tempUri.flag = LWM2M_URI_FLAG_INSTANCE_ID;
