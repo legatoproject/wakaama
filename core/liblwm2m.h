@@ -211,6 +211,20 @@ bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
 #define LWM2M_SECURITY_MODE_CERTIFICATE     2
 #define LWM2M_SECURITY_MODE_NONE            3
 
+/*
+ * Resource IDs for the LWM2M ACL Object
+ */
+#define LWM2M_ACL_OBJECTID_ID           0
+#define LWM2M_ACL_OBJECT_INSTANCE_ID    1
+#define LWM2M_ACL_ACCESS_ID             2
+#define LWM2M_ACL_OWNER_ID              3
+
+#define LWM2M_ACL_R_RIGHTS              1
+#define LWM2M_ACL_W_RIGHTS              2
+#define LWM2M_ACL_E_RIGHTS              4
+#define LWM2M_ACL_D_RIGHTS              8
+#define LWM2M_ACL_C_RIGHTS              16
+#define LWM2M_ACL_OWNER_BOOTSTRAP       0xFFFF
 
 /*
  * Utility functions for sorted linked list

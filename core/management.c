@@ -16,7 +16,7 @@
  *    Toby Jaffey - Please refer to git log
  *    Bosch Software Innovations GmbH - Please refer to git log
  *    Pascal Rieux - Please refer to git log
- *    
+ *
  *******************************************************************************/
 /*
  Copyright (c) 2013, 2014 Intel Corporation
@@ -193,7 +193,12 @@ coap_status_t dm_handleRequest(lwm2m_context_t * contextP,
         return COAP_IGNORE;
     }
 
-    // TODO: check ACL
+    // Check Access Control
+    if (!acl_checkAccess(contextP, uriP, serverP, message))
+    {
+        LOG("Command refused by ACL configuration");
+        return COAP_401_UNAUTHORIZED;
+    }
 
     switch (message->code)
     {

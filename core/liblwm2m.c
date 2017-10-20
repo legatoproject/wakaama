@@ -316,6 +316,9 @@ int lwm2m_configure(lwm2m_context_t * contextP,
         contextP->objectList = (lwm2m_object_t *)LWM2M_LIST_ADD(contextP->objectList, objectList[i]);
     }
 
+    // Read ACL and store in RAM
+    acl_readObject(contextP);
+
     return COAP_NO_ERROR;
 }
 

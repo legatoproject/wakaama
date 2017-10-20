@@ -273,6 +273,20 @@ typedef struct
 } bs_data_t;
 #endif
 
+typedef struct
+{
+    uint16_t shortId;
+    uint16_t aclRights;
+} acl_resource_t;
+
+typedef struct
+{
+    uint16_t objectId;
+    uint16_t instanceId;
+    uint16_t owner;
+    acl_resource_t* acl;
+} acl_object_instance_t;
+
 // defined in uri.c
 lwm2m_uri_t * uri_decode(char * altPath, multi_option_t *uriPath);
 int uri_getNumber(uint8_t * uriString, size_t uriLength);
@@ -369,4 +383,7 @@ lwm2m_server_t * utils_findServer(lwm2m_context_t * contextP, void * fromSession
 lwm2m_server_t * utils_findBootstrapServer(lwm2m_context_t * contextP, void * fromSessionH);
 #endif
 
+// defined in acl.c
+void acl_readObject(lwm2m_context_t * contextP);
+bool acl_checkAccess(lwm2m_context_t * contextP, lwm2m_uri_t * uriP, lwm2m_server_t * serverP, coap_packet_t * message);
 #endif
