@@ -466,7 +466,8 @@ next_step:
         {
             /* Notify that the device fails to register */
             smanager_SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_FAIL);
-            return result;
+            contextP->state = STATE_BOOTSTRAP_REQUIRED;
+            goto next_step;
         }
 #endif
         contextP->state = STATE_REGISTERING;
