@@ -136,30 +136,37 @@ uint8_t lwm2m_buffer_send(void * sessionH, uint8_t * buffer, size_t length, void
 // userData: parameter to lwm2m_init()
 bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
 
+#ifdef SIERRA
+uint8_t lwm2m_report_coap_status(const char *filePath, const char *func, int code);
+#define COAP(x)     lwm2m_report_coap_status(__FILE__, __func__, x)
+#else
+#define COAP(x)     (uint8_t)x
+#endif
+
 /*
- * Error code
+ * Error code as defined in RFC 7252 section 12.1.2
  */
 
 #define COAP_NO_ERROR                   (uint8_t)0x00
 #define COAP_IGNORE                     (uint8_t)0x01
 
-#define COAP_201_CREATED                (uint8_t)0x41
-#define COAP_202_DELETED                (uint8_t)0x42
-#define COAP_204_CHANGED                (uint8_t)0x44
-#define COAP_205_CONTENT                (uint8_t)0x45
-#define COAP_231_CONTINUE               (uint8_t)0x5F
-#define COAP_400_BAD_REQUEST            (uint8_t)0x80
-#define COAP_401_UNAUTHORIZED           (uint8_t)0x81
-#define COAP_402_BAD_OPTION             (uint8_t)0x82
-#define COAP_404_NOT_FOUND              (uint8_t)0x84
-#define COAP_405_METHOD_NOT_ALLOWED     (uint8_t)0x85
-#define COAP_406_NOT_ACCEPTABLE         (uint8_t)0x86
-#define COAP_408_REQ_ENTITY_INCOMPLETE  (uint8_t)0x88
-#define COAP_412_PRECONDITION_FAILED    (uint8_t)0x8C
-#define COAP_413_ENTITY_TOO_LARGE       (uint8_t)0x8D
-#define COAP_500_INTERNAL_SERVER_ERROR  (uint8_t)0xA0
-#define COAP_501_NOT_IMPLEMENTED        (uint8_t)0xA1
-#define COAP_503_SERVICE_UNAVAILABLE    (uint8_t)0xA3
+#define COAP_201_CREATED                COAP(0x41)
+#define COAP_202_DELETED                COAP(0x42)
+#define COAP_204_CHANGED                COAP(0x44)
+#define COAP_205_CONTENT                COAP(0x45)
+#define COAP_231_CONTINUE               COAP(0x5F)
+#define COAP_400_BAD_REQUEST            COAP(0x80)
+#define COAP_401_UNAUTHORIZED           COAP(0x81)
+#define COAP_402_BAD_OPTION             COAP(0x82)
+#define COAP_404_NOT_FOUND              COAP(0x84)
+#define COAP_405_METHOD_NOT_ALLOWED     COAP(0x85)
+#define COAP_406_NOT_ACCEPTABLE         COAP(0x86)
+#define COAP_408_REQ_ENTITY_INCOMPLETE  COAP(0x88)
+#define COAP_412_PRECONDITION_FAILED    COAP(0x8C)
+#define COAP_413_ENTITY_TOO_LARGE       COAP(0x8D)
+#define COAP_500_INTERNAL_SERVER_ERROR  COAP(0xA0)
+#define COAP_501_NOT_IMPLEMENTED        COAP(0xA1)
+#define COAP_503_SERVICE_UNAVAILABLE    COAP(0xA3)
 
 /*
  * Standard Object IDs
