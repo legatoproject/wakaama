@@ -706,6 +706,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
     if (coap_error_code != NO_ERROR && coap_error_code != COAP_IGNORE)
 #endif
     {
+        REPORT_COAP(coap_error_code);
         LOG_ARG("ERROR %u: %s", coap_error_code, coap_error_message);
 
         /* Set to sendable error code. */

@@ -136,11 +136,13 @@ uint8_t lwm2m_buffer_send(void * sessionH, uint8_t * buffer, size_t length, void
 // userData: parameter to lwm2m_init()
 bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
 
+#define COAP(x)     (uint8_t)x
+
 #ifdef SIERRA
 uint8_t lwm2m_report_coap_status(const char *filePath, const char *func, int code);
-#define COAP(x)     lwm2m_report_coap_status(__FILE__, __func__, x)
+#define REPORT_COAP(x)     lwm2m_report_coap_status(__FILE__, __func__, x)
 #else
-#define COAP(x)     (uint8_t)x
+#define REPORT_COAP(x)
 #endif
 
 /*
