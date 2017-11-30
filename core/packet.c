@@ -204,23 +204,9 @@ static coap_status_t handle_request(lwm2m_context_t * contextP,
 #endif
 
 #ifdef LWM2M_CLIENT_MODE
-    if (NULL == message->uri_path)
-    {
-        LOG ("No URI available for this request.");
-    }
-    else
-    {
-        uriP = uri_decode(contextP->altPath, message->uri_path);
-    }
+    uriP = uri_decode(contextP->altPath, message->uri_path);
 #else
-    if (NULL == message->uri_path)
-    {
-        LOG ("No URI available for this request.");
-    }
-    else
-    {
-        uriP = uri_decode(NULL, message->uri_path);
-    }
+    uriP = uri_decode(NULL, message->uri_path);
 #endif
 
     if (NULL == uriP)
