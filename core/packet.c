@@ -337,6 +337,7 @@ static void prv_push_callback(lwm2m_transaction_t * transacP, void * message)
 {
     push_state_t * push_stateP = &current_push_state;
     coap_packet_t * ack_message = transacP->message;
+    coap_packet_t * packet = (coap_packet_t *)message;
 
     if (push_stateP->callbackP == NULL)
     {
@@ -366,7 +367,7 @@ static void prv_push_callback(lwm2m_transaction_t * transacP, void * message)
         // wait till the last block is acked.
         if (block1_more)
         {
-            if (transacP->ack_received)
+            if ((transacP->ack_received) && (COAP_408_REQ_ENTITY_INCOMPLETE != packet->code))
             {
                 LOG("Wait for ack of last block.");
                 return;
@@ -384,7 +385,7 @@ static void prv_push_callback(lwm2m_transaction_t * transacP, void * message)
         }
     }
 
-    if (transacP->ack_received)
+    if (transacP->ack_received && (COAP_408_REQ_ENTITY_INCOMPLETE != packet->code))
     {
         LOG_ARG("mid = %d, retransmit_count = %d ", ackMid, transacP->retrans_counter);
         push_stateP->callbackP(LWM2MCORE_ACK_RECEIVED, ackMid);
