@@ -417,8 +417,9 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
     coap_error_code = coap_parse_message(message, buffer, (uint16_t)length);
     if (coap_error_code == NO_ERROR)
     {
-        LOG_ARG("Parsed: ver %u, type %u, tkl %u, code %u.%.2u, mid %u, Content type: %d",
-                message->version, message->type, message->token_len, message->code >> 5, message->code & 0x1F, message->mid, message->content_type);
+        LOG_ARG("Parsed: blk: %u ver %u, type %u, tkl %u, code %u.%.2u, mid %u, Content type: %d",
+                message->block1_num, message->version, message->type, message->token_len, message->code >> 5,
+                message->code & 0x1F, message->mid, message->content_type);
         LOG_ARG("Payload: %.*s", message->payload_len, message->payload);
         if (message->code >= COAP_GET && message->code <= COAP_DELETE)
         {
@@ -605,12 +606,32 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 if (IS_OPTION(message, COAP_OPTION_BLOCK1) && (message->code == COAP_231_CONTINUE))
                 {
                     lwm2m_transaction_t * transaction;
+                    lwm2m_transaction_t * transacP;
                     uint32_t block1_num;
                     uint8_t  block1_more;
                     uint16_t block1_size;
                     uint32_t next_offset;
                     coap_packet_t *block1_resp;
                     uint32_t next_block;
+
+                    transacP = contextP->transactionList;
+                    while (NULL != transacP)
+                    {
+                        if (lwm2m_session_is_equal(fromSessionH, transacP->peerH, contextP->userData))
+                        {
+                            LOG_ARG("Next mid %u", transacP->mID);
+                            if (transacP->mID != message->mid)
+                            {
+                                LOG_ARG("Ignore mid %u", message->mid);
+                                coap_free_header(message);
+                                return;
+                            }
+
+                            break;
+                        }
+
+                        transacP = transacP->next;
+                    }
 
                     transaction = prv_init_push_transaction(push_stateP->contextP, push_stateP->serverP, push_stateP->content_type);
                     if (transaction == NULL) return;
