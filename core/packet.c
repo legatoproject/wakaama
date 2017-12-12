@@ -859,7 +859,7 @@ coap_status_t message_send(lwm2m_context_t * contextP,
         LOG_ARG("coap_serialize_message() returned %d", pktBufferLen);
         if (0 != pktBufferLen)
         {
-            result = lwm2m_buffer_send(sessionH, pktBuffer, pktBufferLen, contextP->userData);
+            result = lwm2m_buffer_send(sessionH, pktBuffer, pktBufferLen, contextP->userData, message->block1_num == 0);
         }
         lwm2m_free(pktBuffer);
     }

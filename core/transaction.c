@@ -387,7 +387,17 @@ int transaction_send(lwm2m_context_t * contextP,
 
         if (COAP_MAX_RETRANSMIT + 1 >= transacP->retrans_counter)
         {
-            (void)lwm2m_buffer_send(transacP->peerH, transacP->buffer, transacP->buffer_len, contextP->userData);
+            uint32_t block1_num = 0;
+            uint8_t  block1_more;
+            uint16_t block1_size;
+            coap_get_header_block1(transacP->message, &block1_num, &block1_more, &block1_size, NULL);
+            LOG_ARG("Send block num %u (SZX %u/ SZX Max%u) MORE %u",
+                                                        block1_num,
+                                                        block1_size,
+                                                        REST_MAX_CHUNK_SIZE,
+                                                        block1_more);
+
+            (void)lwm2m_buffer_send(transacP->peerH, transacP->buffer, transacP->buffer_len, contextP->userData, block1_num == 0);
 
             transacP->retrans_time += timeout;
             transacP->retrans_counter += 1;
