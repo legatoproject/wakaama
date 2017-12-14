@@ -156,15 +156,16 @@ static void prv_handleRegistrationReply(lwm2m_transaction_t * transacP,
     }
 }
 
-#define PRV_QUERY_BUFFER_LENGTH 200
+#define PRV_QUERY_BUFFER_LENGTH     200
+#define PRV_REGISTER_BUFFER_LENGTH  1024
 
 // send the registration for a single server
 static uint8_t prv_register(lwm2m_context_t * contextP,
                             lwm2m_server_t * server)
 {
-    char query[200];
+    char query[PRV_QUERY_BUFFER_LENGTH];
     int query_length;
-    uint8_t payload[512];
+    uint8_t payload[PRV_REGISTER_BUFFER_LENGTH];
     int payload_length;
     lwm2m_transaction_t * transaction;
 
@@ -254,7 +255,7 @@ static int prv_updateRegistration(lwm2m_context_t * contextP,
                                   bool withObjects)
 {
     lwm2m_transaction_t * transaction;
-    uint8_t payload[512];
+    uint8_t payload[PRV_REGISTER_BUFFER_LENGTH];
     int payload_length;
 
     transaction = transaction_new(server->sessionH, COAP_POST, NULL, NULL, contextP->nextMID++, 4, NULL);
