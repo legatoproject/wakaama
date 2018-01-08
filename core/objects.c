@@ -855,6 +855,7 @@ int object_getServers(lwm2m_context_t * contextP)
                     }
                     targetP->status = STATE_DEREGISTERED;
                     contextP->serverList = (lwm2m_server_t*)LWM2M_LIST_ADD(contextP->serverList, targetP);
+                    /* targetP is released by lwm2m_close (prv_deleteServerList) API */
                 }
             }
             lwm2m_data_free(size, dataP);
