@@ -139,6 +139,7 @@ static bool is_block_transfer(coap_packet_t * message, uint32_t * block_num, uin
     }
     else
     {
+        LOG("Async state buffer is NULL");
         return false;
     }
 }
@@ -333,6 +334,18 @@ static void prv_end_push(push_state_t * push_stateP)
     }
 }
 
+static void prv_end_async()
+{
+    async_state_t * async_stateP = &current_async_state;
+
+    if (async_stateP->bufferP != NULL)
+    {
+        lwm2m_free(async_stateP->bufferP);
+        async_stateP->bufferP = NULL;
+        async_stateP->length = 0;
+    }
+}
+
 static void prv_push_callback(lwm2m_transaction_t * transacP, void * message)
 {
     push_state_t * push_stateP = &current_push_state;
@@ -410,6 +423,8 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
     coap_status_t coap_error_code = NO_ERROR;
     static coap_packet_t message[1];
     static coap_packet_t response[1];
+    uint16_t payload_length;
+    uint8_t* payloadP;
 #if SIERRA
     push_state_t * push_stateP = &current_push_state;
 #endif
@@ -525,7 +540,17 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                         else
                         {
                             coap_set_header_block2(response, block_num, response->payload_len - block_offset > block_size, block_size);
-                            coap_set_payload(response, response->payload+block_offset, MIN(response->payload_len - block_offset, block_size));
+                            payload_length = MIN(response->payload_len - block_offset, block_size);
+                            payloadP = (uint8_t *)lwm2m_malloc(payload_length);
+
+                            memcpy(payloadP,response->payload+block_offset, payload_length);
+                            coap_set_payload(response, payloadP, payload_length);
+
+                            if(!response->block2_more)
+                            {
+                                LOG("End of block2 transfer");
+                                prv_end_async();
+                            }
                         } /* if (valid offset) */
                     }
                     else
@@ -533,7 +558,19 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                         /* resource provides chunk-wise data */
                         LOG_ARG("Blockwise: blockwise resource, new offset %d", (int) new_offset);
                         coap_set_header_block2(response, block_num, new_offset!=-1 || response->payload_len > block_size, block_size);
-                        if (response->payload_len > block_size) coap_set_payload(response, response->payload, block_size);
+
+                        if (response->payload_len > block_size)
+                        {
+                            payloadP = (uint8_t *)lwm2m_malloc(block_size);
+                            memcpy(payloadP,response->payload, block_size);
+                            coap_set_payload(response, payloadP, block_size);
+
+                            if(!response->block2_more)
+                            {
+                                LOG("End of block2 transfer");
+                                prv_end_async();
+                            }
+                        }
                     } /* if (resource aware of blockwise) */
                 }
                 else if (new_offset!=0)
