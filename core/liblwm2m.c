@@ -176,6 +176,7 @@ void lwm2m_close(lwm2m_context_t * contextP)
 #endif
     prv_deleteServerList(contextP);
     prv_deleteBootstrapServerList(contextP);
+    acl_free(contextP);
     prv_deleteObservedList(contextP);
     lwm2m_free(contextP->endpointName);
     if (contextP->msisdn != NULL)

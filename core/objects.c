@@ -300,6 +300,16 @@ coap_status_t object_write(lwm2m_context_t * contextP,
     if (result == NO_ERROR)
     {
         result = targetP->writeFunc(uriP->instanceId, size, dataP, targetP);
+
+        if ( (LWM2M_ACL_OBJECT_ID == uriP->objectId)
+          && (STATE_REGISTER_REQUIRED < contextP->state)
+          && (COAP_204_CHANGED == result))
+        {
+            // Update ACL
+            acl_erase(contextP);
+            acl_readObject(contextP);
+        }
+
         lwm2m_data_free(size, dataP);
     }
 

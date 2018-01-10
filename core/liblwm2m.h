@@ -730,6 +730,8 @@ int lwm2m_update_registration(lwm2m_context_t * contextP, uint16_t shortServerID
 
 void lwm2m_resource_value_changed(lwm2m_context_t * contextP, lwm2m_uri_t * uriP);
 
+bool lwm2m_acl_deleteObjectInstance(lwm2m_object_t * objectP, uint16_t oiid);
+
 #if SIERRA
 int lwm2m_data_push(lwm2m_context_t * contextP,
                     uint16_t shortServerID,

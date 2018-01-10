@@ -62,21 +62,42 @@ static bool prv_acl_addObjectInstance(lwm2m_object_t * objectP,
     {
         if (accCtrlOiP->objInstId == data.id)
         {
+            size_t count;
+
             // List: key
             accCtrlOiP->objInstId    = data.id;
             // Object instance data
             accCtrlOiP->objectId     = (uint16_t)data.value.asChildren.array[LWM2M_ACL_OBJECTID_ID].value.asInteger;
             accCtrlOiP->objectInstId = (uint16_t)data.value.asChildren.array[LWM2M_ACL_OBJECT_INSTANCE_ID].value.asInteger;
             accCtrlOiP->accCtrlOwner = (uint16_t)data.value.asChildren.array[LWM2M_ACL_OWNER_ID].value.asInteger;
-            accCtrlRiP = accCtrlOiP->accCtrlValListP;
 
-            for (i = 0; i < data.value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.count; i++)
+            // Resource instance number
+            count = data.value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.count;
+            accCtrlRiP = lwm2m_malloc(count*sizeof(acl_ctrl_ri_t));
+            LOG_ARG("allocation for %d resource instances", count);
+            if (!accCtrlRiP)
             {
-                if (accCtrlRiP)
+                return false;
+            }
+
+            accCtrlOiP->accCtrlValListP = accCtrlRiP;
+
+            for (i = 0; i < count; i++)
+            {
+                // ACL: multi-instancied resource
+                if (accCtrlRiP + i)
                 {
-                    accCtrlRiP->resInstId = data.value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array[i].id;
-                    accCtrlRiP->accCtrlValue = data.value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array[i].value.asInteger;;
-                    accCtrlRiP = accCtrlRiP->nextP;
+                    (accCtrlRiP + i)->resInstId = data.value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array[i].id;
+                    (accCtrlRiP + i)->accCtrlValue = data.value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array[i].value.asInteger;
+                    (accCtrlRiP + i)->nextP = NULL;
+                    if (i)
+                    {
+                        (accCtrlRiP + i - 1)->nextP = (accCtrlRiP + i);
+                    }
+                }
+                else
+                {
+                    return false;
                 }
             }
             return true;
@@ -133,6 +154,8 @@ static int prv_acl_checkRights(uint16_t objectId,
         // Check the ACL
         int defaultRights = -1;
         acl_ctrl_ri_t* accCtrlValListP = NULL;
+        LOG("One object instance of object 2 includes objectId and instanceId");
+        LOG_ARG("accCtrlOiP->accCtrlOwner %d", accCtrlOiP->accCtrlOwner);
 
         // If server short ID is the ACL owner and if ACL resource are not present: full rights
         if ((accCtrlOiP->accCtrlOwner == shortId)
@@ -140,7 +163,7 @@ static int prv_acl_checkRights(uint16_t objectId,
         {
             *ownerP = shortId;
             // Full access
-            return LWM2M_ACL_R_RIGHTS | LWM2M_ACL_W_RIGHTS | LWM2M_ACL_E_RIGHTS | LWM2M_ACL_D_RIGHTS | LWM2M_ACL_C_RIGHTS ;
+            return LWM2M_ACL_R_RIGHTS | LWM2M_ACL_W_RIGHTS | LWM2M_ACL_E_RIGHTS | LWM2M_ACL_D_RIGHTS;
         }
 
         // Read all ACL resource instances
@@ -177,23 +200,30 @@ static int prv_acl_checkRights(uint16_t objectId,
             *ownerP = accCtrlOiP->accCtrlOwner;
         }
         else
+        {
             // No access rights
+            LOG("No access rights");
             ret = 0;
+        }
     }
     else
+    {
+        LOG("No access rights");
         // No access rights
         ret = 0;
+    }
+    LOG_ARG("ACL rights 0x%x", ret);
 
     return ret;
 }
-
 
 /**
  * Read the object 2 and store data in RAM
  */
 void acl_readObject(lwm2m_context_t * contextP)
 {
-    lwm2m_object_t * targetPtr = (lwm2m_object_t*)LWM2M_LIST_FIND(contextP->objectList,LWM2M_ACL_OBJECT_ID);
+    lwm2m_object_t * targetPtr = (lwm2m_object_t*)LWM2M_LIST_FIND(contextP->objectList,
+                                                                  LWM2M_ACL_OBJECT_ID);
     if ((targetPtr != NULL) && (targetPtr->readFunc != NULL))
     {
         // Object 2 is registered
@@ -207,8 +237,6 @@ void acl_readObject(lwm2m_context_t * contextP)
 
         if (object_readData(contextP, &uri, &size, &dataP) == COAP_205_CONTENT)
         {
-            uint32_t j;
-            acl_resource_t * aclValueP;
             for (i = 0; i < (uint32_t)size; i++)
             {
                 if (false == prv_acl_addObjectInstance(targetPtr,
@@ -247,9 +275,10 @@ bool acl_checkAccess(lwm2m_context_t * contextP,
         serverNb++;
         localServerP = (lwm2m_server_t *)localServerP->next;
     }
-    LOG_ARG("serverNb %u", serverNb);
 
-    LOG_ARG("ACL check: short Id %d, oid %d oiid %d",
+    LOG_ARG("serverNb %d", serverNb);
+
+    LOG_ARG("ACL check: short Id %d, for /%d/%d",
             serverP->shortID, uriP->objectId, uriP->instanceId);
 
     // Check if object 2 is registered
@@ -259,12 +288,20 @@ bool acl_checkAccess(lwm2m_context_t * contextP,
         // Object 2 is not registered: accept the command
         if (serverNb == 1)
         {
-            LOG("object 2 is not registered but only one server: accept the command");
+            LOG("Object 2 is not registered but only one server: accept the command");
             return true;
         }
 
-        LOG("object 2 is not registered: refuse the command");
+        LOG("Object 2 is not registered: refuse the command");
         return false;
+    }
+
+    // Check if only one server is declared and if no ACL object instances are present
+    // In this case, accept any command
+    if ((serverNb == 1) && !(targetP->instanceList))
+    {
+        LOG("Only 1 DM server without any object instance in object 2: accept any command");
+        return true;
     }
 
     // CREATE command
@@ -285,11 +322,6 @@ bool acl_checkAccess(lwm2m_context_t * contextP,
             return false;
     }
 
-    // For others commands than CREATE, the procedure is indicated in LwM2M TS §7.3.2.1
-    // Check if only one server is declared
-    if (serverNb == 1)
-        return true;
-
     // Check if the object ID and object instance ID of the incoming command are filled in object 2
     // Check if server short ID is ACL owner and if ACL resource instance is present
     // Check if server short ID is indicated in ACL resource instance
@@ -301,7 +333,6 @@ bool acl_checkAccess(lwm2m_context_t * contextP,
                               &acl_owner);
     if (acl <= 0)
     {
-        LOG_ARG("/%d/%d not present in object 2", uriP->objectId, uriP->instanceId);
         return false;
     }
 
@@ -353,4 +384,148 @@ bool acl_checkAccess(lwm2m_context_t * contextP,
     }
 
     return false;
+}
+
+/**
+ * Free ACL list
+ */
+void acl_free(lwm2m_context_t * contextP)
+{
+    lwm2m_object_t * targetPtr = (lwm2m_object_t*)LWM2M_LIST_FIND(contextP->objectList,
+                                                                  LWM2M_ACL_OBJECT_ID);
+    if (targetPtr)
+    {
+        acl_ctrl_oi_t * accCtrlOiP = targetPtr->instanceList;
+        while (accCtrlOiP)
+        {
+            lwm2m_free(accCtrlOiP->accCtrlValListP);
+            accCtrlOiP = accCtrlOiP->nextP;
+            lwm2m_free(accCtrlOiP);
+        }
+    }
+}
+
+/**
+ * Delete ACL object instance related to a specific object instance
+ *
+ * * @return
+ *  - true if object instance were deleted
+ *  - false on failure
+ */
+bool acl_deleteRelatedObjectInstance(lwm2m_context_t * contextP, uint16_t oid, uint16_t oiid)
+{
+    bool result = false;
+    lwm2m_object_t * objectP = (lwm2m_object_t*)LWM2M_LIST_FIND(contextP->objectList,
+                                                                LWM2M_ACL_OBJECT_ID);
+    LOG_ARG("Delete ACL oid for /%d/%d", oid, oiid);
+    if (objectP != NULL)
+    {
+        // Object 2 is registered
+        uint16_t instanceId;
+        acl_ctrl_oi_t * accCtrlOiP;
+        acl_ctrl_ri_t * accCtrlRiP;
+
+        accCtrlOiP = (acl_ctrl_oi_t *)(objectP->instanceList);
+
+        while (accCtrlOiP)
+        {
+            if ((accCtrlOiP->objectId == oid)
+             && (accCtrlOiP->objectInstId == oiid))
+            {
+                LOG_ARG("Delete object instance /2/%d for /%d/%d",
+                        accCtrlOiP->objInstId, accCtrlOiP->objectId, accCtrlOiP->objectInstId);
+                if ( (objectP->deleteFunc)
+                  && (COAP_202_DELETED == objectP->deleteFunc(accCtrlOiP->objInstId, objectP) ) )
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                accCtrlOiP = accCtrlOiP->nextP;
+            }
+        }
+    }
+    return false;
+}
+
+/**
+ * Add an object instance of object 2
+ *
+ * @return
+ *  - true on success
+ *  - false on failure.
+ */
+bool acl_addObjectInstance(lwm2m_context_t * contextP, lwm2m_data_t data)
+{
+    lwm2m_object_t * objectP = (lwm2m_object_t *)LWM2M_LIST_FIND(contextP->objectList,
+                                                                 LWM2M_ACL_OBJECT_ID);
+    return prv_acl_addObjectInstance(objectP, data);
+}
+
+/**
+ * Delete an object instance of object 2
+ *
+ * @return
+ *  - true on success
+ *  - false on failure.
+ */
+bool lwm2m_acl_deleteObjectInstance(lwm2m_object_t * objectP, uint16_t oiid)
+{
+    acl_ctrl_oi_t * accCtrlOiP;
+    acl_ctrl_ri_t * accCtrlRiP;
+
+    if (!objectP)
+        return false;
+
+    accCtrlOiP = (acl_ctrl_oi_t *)LWM2M_LIST_FIND(objectP->instanceList, oiid);
+
+    if (accCtrlOiP)
+    {
+        lwm2m_client_t* clientP;
+        LOG_ARG("remove access rights for /2/%d", accCtrlOiP->objInstId);
+
+        // Remove the object Id and corresponding access rights
+        accCtrlRiP = accCtrlOiP->accCtrlValListP;
+        while (accCtrlRiP)
+        {
+            acl_ctrl_ri_t * TempP = accCtrlRiP->nextP;
+            lwm2m_free(accCtrlRiP);
+            accCtrlRiP = TempP;
+        }
+
+        // Delete the object instance
+        objectP->instanceList = LWM2M_LIST_RM(objectP->instanceList,
+                                              accCtrlOiP->objInstId,
+                                              &clientP);
+        lwm2m_free(accCtrlOiP);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Erase all object instances but keep allocation for instanceList
+ */
+void acl_erase(lwm2m_context_t * contextP)
+{
+    lwm2m_object_t * objectP = (lwm2m_object_t *)LWM2M_LIST_FIND(contextP->objectList,
+                                                                 LWM2M_ACL_OBJECT_ID);
+    acl_ctrl_oi_t * accCtrlOiP;
+
+    if (!objectP)
+    {
+        return;
+    }
+
+    accCtrlOiP = objectP->instanceList;
+    while (accCtrlOiP)
+    {
+        lwm2m_free(accCtrlOiP->accCtrlValListP);
+
+        accCtrlOiP->objectId = LWM2M_MAX_ID;
+        accCtrlOiP->objectInstId = LWM2M_MAX_ID;
+        accCtrlOiP->accCtrlOwner = LWM2M_ACL_OWNER_BOOTSTRAP;
+        accCtrlOiP = accCtrlOiP->nextP;
+    }
 }

@@ -386,4 +386,8 @@ lwm2m_server_t * utils_findBootstrapServer(lwm2m_context_t * contextP, void * fr
 // defined in acl.c
 void acl_readObject(lwm2m_context_t * contextP);
 bool acl_checkAccess(lwm2m_context_t * contextP, lwm2m_uri_t * uriP, lwm2m_server_t * serverP, coap_packet_t * message);
+bool acl_addObjectInstance(lwm2m_context_t * contextP, lwm2m_data_t data);
+bool acl_deleteRelatedObjectInstance(lwm2m_context_t * contextP, uint16_t oid, uint16_t oiid);
+void acl_erase(lwm2m_context_t * contextP);
+void acl_free(lwm2m_context_t * contextP);
 #endif

@@ -280,6 +280,8 @@ coap_status_t dm_handleRequest(lwm2m_context_t * contextP,
                 {
                     //longest uri is /65535/65535 = 12 + 1 (null) chars
                     char location_path[13] = "";
+                    lwm2m_object_t * targetP;
+
                     //instanceId expected
                     if ((uriP->flag & LWM2M_URI_FLAG_INSTANCE_ID) == 0)
                     {
@@ -293,6 +295,65 @@ coap_status_t dm_handleRequest(lwm2m_context_t * contextP,
                         break;
                     }
                     coap_set_header_location_path(response, location_path);
+
+                    // Create an object instance in object 2 (ACL) for the created object instance
+                    targetP = (lwm2m_object_t *)LWM2M_LIST_FIND(contextP->objectList,
+                                                                LWM2M_ACL_OBJECT_ID);
+
+                    // Check if the object is registered
+                    // Check if the create callback is filled
+                    // Check that the instance list is not NULL (in this case, ACL is not used)
+                    if (targetP && (targetP->createFunc) && (targetP->instanceList))
+                    {
+                        uint16_t aclInstanceId = lwm2m_list_newId(targetP->instanceList);
+                        lwm2m_data_t * dataP = NULL;
+
+                        dataP = lwm2m_data_new(1);
+                        if(!dataP) return COAP_500_INTERNAL_SERVER_ERROR;
+
+                        dataP[0].type = LWM2M_TYPE_OBJECT_INSTANCE;
+                        dataP[0].id = aclInstanceId;
+                        dataP[0].value.asChildren.count = 4;
+
+                        dataP[0].value.asChildren.array = lwm2m_data_new(4);
+
+                        // Resource 0: Object Id
+                        dataP[0].value.asChildren.array[LWM2M_ACL_OBJECTID_ID].id = LWM2M_ACL_OBJECTID_ID;
+                        dataP[0].value.asChildren.array[LWM2M_ACL_OBJECTID_ID].type = LWM2M_TYPE_INTEGER;
+                        dataP[0].value.asChildren.array[LWM2M_ACL_OBJECTID_ID].value.asInteger = (int64_t)(uriP->objectId);
+
+                        // Resource 1: Object instance id
+                        dataP[0].value.asChildren.array[LWM2M_ACL_OBJECT_INSTANCE_ID].id = LWM2M_ACL_OBJECT_INSTANCE_ID;
+                        dataP[0].value.asChildren.array[LWM2M_ACL_OBJECT_INSTANCE_ID].type = LWM2M_TYPE_INTEGER;
+                        dataP[0].value.asChildren.array[LWM2M_ACL_OBJECT_INSTANCE_ID].value.asInteger = (int64_t)(uriP->instanceId);
+
+                        // Resource 2: ACL
+                        dataP[0].value.asChildren.array[LWM2M_ACL_ACCESS_ID].type = LWM2M_TYPE_MULTIPLE_RESOURCE;
+                        dataP[0].value.asChildren.array[LWM2M_ACL_ACCESS_ID].id = LWM2M_ACL_ACCESS_ID;
+                        dataP[0].value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.count = 1;
+                        dataP[0].value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array = lwm2m_data_new(1);
+                        dataP[0].value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array[0].type = LWM2M_TYPE_INTEGER;
+                        dataP[0].value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array[0].id = serverP->shortID;
+                        dataP[0].value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array[0].value.asInteger = LWM2M_ACL_R_RIGHTS
+                                                                                                                       | LWM2M_ACL_W_RIGHTS
+                                                                                                                       | LWM2M_ACL_E_RIGHTS
+                                                                                                                       | LWM2M_ACL_D_RIGHTS;
+
+                        // Resource 3: ACL owner
+                        dataP[0].value.asChildren.array[LWM2M_ACL_OWNER_ID].id = LWM2M_ACL_OWNER_ID;
+                        dataP[0].value.asChildren.array[LWM2M_ACL_OWNER_ID].type = LWM2M_TYPE_INTEGER;
+                        dataP[0].value.asChildren.array[LWM2M_ACL_OWNER_ID].value.asInteger = (int64_t)(serverP->shortID);
+
+                        if (COAP_201_CREATED == targetP->createFunc(aclInstanceId,
+                                                                    dataP[0].value.asChildren.count,
+                                                                    dataP[0].value.asChildren.array,
+                                                                    targetP))
+                        {
+                            // Add ACL data in list
+                            acl_addObjectInstance(contextP, dataP[0]);
+                        }
+                        lwm2m_data_free(1, dataP);
+                    }
 
                     lwm2m_update_registration(contextP, 0, true);
                 }
@@ -345,6 +406,22 @@ coap_status_t dm_handleRequest(lwm2m_context_t * contextP,
                 result = object_delete(contextP, uriP);
                 if (result == COAP_202_DELETED)
                 {
+                    // Remove any corresponding ACL object instance
+                    lwm2m_object_t * targetP = (lwm2m_object_t *)LWM2M_LIST_FIND(contextP->objectList,
+                                                                                 LWM2M_ACL_OBJECT_ID);
+                    if ((targetP) && (targetP->deleteFunc))
+                    {
+                        bool deleteResult = true;
+                        // Delete all object instances in object 2 which concerns the object
+                        // instance which was deleted
+                        while (deleteResult)
+                        {
+                            deleteResult = acl_deleteRelatedObjectInstance(contextP,
+                                                                           uriP->objectId,
+                                                                           uriP->instanceId);
+                        }
+                    }
+
                     lwm2m_update_registration(contextP, 0, true);
                 }
             }
