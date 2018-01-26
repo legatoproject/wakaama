@@ -235,6 +235,27 @@ uint8_t lwm2m_report_coap_status(const char *filePath, const char *func, int cod
 #define LWM2M_ACL_C_RIGHTS              16
 #define LWM2M_ACL_OWNER_BOOTSTRAP       0xFFFF
 
+
+#if SIERRA
+/*
+ * Enum definition for LwM2M push callback
+ */
+typedef enum
+{
+    LWM2M_ACK_RECEIVED = 0,     // Data transferred successfully
+    LWM2M_ACK_TIMEOUT           // Transaction time out
+} lwm2m_ack_result_t;
+
+/*
+ * LwM2M push callback function prototype
+ */
+typedef void (*lwm2m_push_ack_callback_t)
+(
+    lwm2m_ack_result_t result,       // Result of the transaction
+    uint16_t midPtr                  // Message id
+);
+#endif
+
 /*
  * Utility functions for sorted linked list
  */
@@ -740,6 +761,8 @@ int lwm2m_data_push(lwm2m_context_t * contextP,
                     lwm2m_media_type_t type,
                     uint16_t * midP
                     );
+
+void lwm2m_set_push_callback(lwm2m_push_ack_callback_t callbackP);
 
 bool lwm2m_async_response(lwm2m_context_t * contextP,
                           uint16_t shortServerId,

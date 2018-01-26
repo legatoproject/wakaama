@@ -105,7 +105,7 @@ typedef struct
     uint8_t * bufferP;
     size_t buffer_len;
     unsigned int content_type;
-    lwm2mcore_PushAckCallback_t callbackP;
+    lwm2m_push_ack_callback_t callbackP;
 } push_state_t;
 
 typedef struct
@@ -401,12 +401,12 @@ static void prv_push_callback(lwm2m_transaction_t * transacP, void * message)
     if (transacP->ack_received && (COAP_408_REQ_ENTITY_INCOMPLETE != packet->code))
     {
         LOG_ARG("mid = %d, retransmit_count = %d ", ackMid, transacP->retrans_counter);
-        push_stateP->callbackP(LWM2MCORE_ACK_RECEIVED, ackMid);
+        push_stateP->callbackP(LWM2M_ACK_RECEIVED, ackMid);
     }
     else
     {
         LOG_ARG("mid = %d, retransmit_count = %d ", ackMid, transacP->retrans_counter);
-        push_stateP->callbackP(LWM2MCORE_ACK_TIMEOUT, ackMid);
+        push_stateP->callbackP(LWM2M_ACK_TIMEOUT, ackMid);
     }
 }
 #endif
@@ -928,7 +928,7 @@ coap_status_t message_send(lwm2m_context_t * contextP,
 
 #if SIERRA
 
-void lwm2m_set_push_callback(lwm2mcore_PushAckCallback_t callbackP)
+void lwm2m_set_push_callback(lwm2m_push_ack_callback_t callbackP)
 {
     push_state_t * push_stateP = &current_push_state;
     push_stateP->callbackP = callbackP;
