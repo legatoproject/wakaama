@@ -182,14 +182,14 @@ lwm2m_transaction_t * transaction_new(void * sessionH,
     {
         char stringID[LWM2M_STRING_ID_MAX_LEN];
 
-        result = utils_intToText(uriP->objectId, stringID, LWM2M_STRING_ID_MAX_LEN);
+        result = utils_intToText(uriP->objectId, (uint8_t*)stringID, LWM2M_STRING_ID_MAX_LEN);
         if (result == 0) goto error;
         stringID[result] = 0;
         coap_set_header_uri_path_segment(transacP->message, stringID);
 
         if (LWM2M_URI_IS_SET_INSTANCE(uriP))
         {
-            result = utils_intToText(uriP->instanceId, stringID, LWM2M_STRING_ID_MAX_LEN);
+            result = utils_intToText(uriP->instanceId, (uint8_t*)stringID, LWM2M_STRING_ID_MAX_LEN);
             if (result == 0) goto error;
             stringID[result] = 0;
             coap_set_header_uri_path_segment(transacP->message, stringID);
@@ -203,7 +203,7 @@ lwm2m_transaction_t * transaction_new(void * sessionH,
         }
         if (LWM2M_URI_IS_SET_RESOURCE(uriP))
         {
-            result = utils_intToText(uriP->resourceId, stringID, LWM2M_STRING_ID_MAX_LEN);
+            result = utils_intToText(uriP->resourceId, (uint8_t*)stringID, LWM2M_STRING_ID_MAX_LEN);
             if (result == 0) goto error;
             stringID[result] = 0;
             coap_set_header_uri_path_segment(transacP->message, stringID);
@@ -244,7 +244,12 @@ error:
 void transaction_free(lwm2m_transaction_t * transacP)
 {
     LOG("Entering");
-    if (transacP->message) lwm2m_free(transacP->message);
+    if (transacP->message)
+    {
+       coap_free_header(transacP->message);
+       lwm2m_free(transacP->message);
+    }
+
     if (transacP->buffer) lwm2m_free(transacP->buffer);
     lwm2m_free(transacP);
 }
@@ -347,10 +352,18 @@ int transaction_send(lwm2m_context_t * contextP,
     if (transacP->buffer == NULL)
     {
         transacP->buffer_len = coap_serialize_get_size(transacP->message);
-        if (transacP->buffer_len == 0) return COAP_500_INTERNAL_SERVER_ERROR;
+        if (transacP->buffer_len == 0)
+        {
+           transaction_remove(contextP, transacP);
+           return COAP_500_INTERNAL_SERVER_ERROR;
+        }
 
         transacP->buffer = (uint8_t*)lwm2m_malloc(transacP->buffer_len);
-        if (transacP->buffer == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
+        if (transacP->buffer == NULL)
+        {
+           transaction_remove(contextP, transacP);
+           return COAP_500_INTERNAL_SERVER_ERROR;
+        }
 
         transacP->buffer_len = coap_serialize_message(transacP->message, transacP->buffer);
         if (transacP->buffer_len == 0)

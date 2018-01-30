@@ -145,13 +145,13 @@ static bool is_block_transfer(coap_packet_t * message, uint32_t * block_num, uin
 }
 #endif
 
-static coap_status_t handle_request(lwm2m_context_t * contextP,
-                                    void * fromSessionH,
-                                    coap_packet_t * message,
-                                    coap_packet_t * response)
+static uint8_t handle_request(lwm2m_context_t * contextP,
+                              void * fromSessionH,
+                              coap_packet_t * message,
+                              coap_packet_t * response)
 {
     lwm2m_uri_t * uriP = NULL;
-    coap_status_t result = COAP_IGNORE;
+    uint8_t result = COAP_IGNORE;
 
 #if SIERRA
     uint32_t block_num = 0;
@@ -416,11 +416,11 @@ static void prv_push_callback(lwm2m_transaction_t * transacP, void * message)
  * All rights reserved.
  */
 void lwm2m_handle_packet(lwm2m_context_t * contextP,
-                        uint8_t * buffer,
-                        int length,
-                        void * fromSessionH)
+                         uint8_t * buffer,
+                         int length,
+                         void * fromSessionH)
 {
-    coap_status_t coap_error_code = NO_ERROR;
+    uint8_t coap_error_code = NO_ERROR;
     static coap_packet_t message[1];
     static coap_packet_t response[1];
     uint16_t payload_length;
@@ -860,7 +860,7 @@ bool lwm2m_async_response(lwm2m_context_t * contextP,
     targetP = contextP->serverList;
     if (targetP == NULL)
     {
-        if (object_getServers(contextP) == -1)
+        if (object_getServers(contextP, false) == -1)
         {
             LOG("No server found");
             return false;
@@ -897,11 +897,11 @@ bool lwm2m_async_response(lwm2m_context_t * contextP,
 }
 #endif
 
-coap_status_t message_send(lwm2m_context_t * contextP,
-                           coap_packet_t * message,
-                           void * sessionH)
+uint8_t message_send(lwm2m_context_t * contextP,
+                     coap_packet_t * message,
+                     void * sessionH)
 {
-    coap_status_t result = COAP_500_INTERNAL_SERVER_ERROR;
+    uint8_t result = COAP_500_INTERNAL_SERVER_ERROR;
     uint8_t * pktBuffer;
     size_t pktBufferLen = 0;
     size_t allocLen;
@@ -1037,7 +1037,7 @@ int lwm2m_data_push(lwm2m_context_t * contextP,
     targetP = contextP->serverList;
     if (targetP == NULL)
     {
-        if (object_getServers(contextP) == -1)
+        if (object_getServers(contextP, false) == -1)
         {
             LOG("No server found");
             result = COAP_404_NOT_FOUND;

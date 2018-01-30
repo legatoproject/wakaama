@@ -153,13 +153,13 @@ static lwm2m_watcher_t * prv_getWatcher(lwm2m_context_t * contextP,
     return watcherP;
 }
 
-coap_status_t observe_handleRequest(lwm2m_context_t * contextP,
-                                    lwm2m_uri_t * uriP,
-                                    lwm2m_server_t * serverP,
-                                    int size,
-                                    lwm2m_data_t * dataP,
-                                    coap_packet_t * message,
-                                    coap_packet_t * response)
+uint8_t observe_handleRequest(lwm2m_context_t * contextP,
+                              lwm2m_uri_t * uriP,
+                              lwm2m_server_t * serverP,
+                              int size,
+                              lwm2m_data_t * dataP,
+                              coap_packet_t * message,
+                              coap_packet_t * response)
 {
     lwm2m_watcher_t * watcherP;
     uint32_t count;
@@ -308,10 +308,10 @@ void observe_clear(lwm2m_context_t * contextP,
     }
 }
 
-coap_status_t observe_setParameters(lwm2m_context_t * contextP,
-                                    lwm2m_uri_t * uriP,
-                                    lwm2m_server_t * serverP,
-                                    lwm2m_attributes_t * attrP)
+uint8_t observe_setParameters(lwm2m_context_t * contextP,
+                              lwm2m_uri_t * uriP,
+                              lwm2m_server_t * serverP,
+                              lwm2m_attributes_t * attrP)
 {
     uint8_t result;
     lwm2m_watcher_t * watcherP;
@@ -687,7 +687,7 @@ void observe_step(lwm2m_context_t * contextP,
                  && watcherP->parameters != NULL
                  && (watcherP->parameters->toSet & LWM2M_ATTR_FLAG_MAX_PERIOD) != 0)
                 {
-                    LOG_ARG("Checking maximal period (%d s)", watcherP->parameters->minPeriod);
+                    LOG_ARG("Checking maximal period (%d s)", watcherP->parameters->maxPeriod);
 
                     if (watcherP->lastTime + watcherP->parameters->maxPeriod <= currentTime)
                     {
@@ -930,8 +930,8 @@ int lwm2m_observe(lwm2m_context_t * contextP,
         if (uriP->objectId == observationP->uri.objectId
             && (LWM2M_URI_IS_SET_INSTANCE(uriP) == false
                 || observationP->uri.instanceId == uriP->instanceId)
-            && (LWM2M_URI_IS_SET_INSTANCE(uriP) == false
-                || observationP->uri.instanceId == uriP->instanceId))
+            && (LWM2M_URI_IS_SET_RESOURCE(uriP) == false
+                || observationP->uri.resourceId == uriP->resourceId))
         {
             break;
         }

@@ -92,7 +92,7 @@ static uint8_t prv_set_tlv(lwm2m_data_t* dataP, acc_ctrl_oi_t* accCtrlOiP)
                  accCtrlRiP!= NULL;
                  accCtrlRiP = accCtrlRiP->next, ri++)
             {
-                subTlvP[ri].id = (uint16_t)ri;
+                subTlvP[ri].id = accCtrlRiP->resInstId;
                 lwm2m_data_encode_int(accCtrlRiP->accCtrlValue, &subTlvP[ri]);
             }
             lwm2m_data_encode_instances(subTlvP, 2, dataP);
@@ -235,7 +235,7 @@ static uint8_t prv_write_resources(uint16_t instanceId, int numData,
                 {
                     result = COAP_400_BAD_REQUEST;
                 }
-                else if (value < 1 || value > 65535)
+                else if (value < 0 || value > 65535)
                 {
                     result = COAP_406_NOT_ACCEPTABLE;
                 }
@@ -394,7 +394,7 @@ lwm2m_object_t * acc_ctrl_create_object(void)
 {
     /*
      * The acc_ctrl_create_object() function creates an empty object
-     * and returns a pointer to the structure that represent it.
+     * and returns a pointer to the structure that represents it.
      */
     lwm2m_object_t* accCtrlObj = NULL;
 
