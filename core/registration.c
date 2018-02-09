@@ -358,9 +358,17 @@ static int prv_updateRegistration(lwm2m_context_t * contextP,
     if (withObjects == true)
     {
         payload_length = object_getRegisterPayloadBufferLength(contextP);
-        if(payload_length == 0) return COAP_500_INTERNAL_SERVER_ERROR;
+        if(payload_length == 0)
+        {
+            transaction_free(transaction);
+            return COAP_500_INTERNAL_SERVER_ERROR;
+        }
         payload = lwm2m_malloc(payload_length);
-        if(!payload) return COAP_500_INTERNAL_SERVER_ERROR;
+        if(!payload)
+        {
+            transaction_free(transaction);
+            return COAP_500_INTERNAL_SERVER_ERROR;
+        }
         payload_length = object_getRegisterPayload(contextP, payload, payload_length);
         if(payload_length == 0)
         {
