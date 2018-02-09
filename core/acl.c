@@ -85,19 +85,12 @@ static bool prv_acl_addObjectInstance(lwm2m_object_t * objectP,
             for (i = 0; i < count; i++)
             {
                 // ACL: multi-instancied resource
-                if (accCtrlRiP + i)
+                (accCtrlRiP + i)->resInstId = data.value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array[i].id;
+                (accCtrlRiP + i)->accCtrlValue = data.value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array[i].value.asInteger;
+                (accCtrlRiP + i)->nextP = NULL;
+                if (i)
                 {
-                    (accCtrlRiP + i)->resInstId = data.value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array[i].id;
-                    (accCtrlRiP + i)->accCtrlValue = data.value.asChildren.array[LWM2M_ACL_ACCESS_ID].value.asChildren.array[i].value.asInteger;
-                    (accCtrlRiP + i)->nextP = NULL;
-                    if (i)
-                    {
-                        (accCtrlRiP + i - 1)->nextP = (accCtrlRiP + i);
-                    }
-                }
-                else
-                {
-                    return false;
+                    (accCtrlRiP + i - 1)->nextP = (accCtrlRiP + i);
                 }
             }
             return true;
@@ -395,11 +388,10 @@ void acl_free(lwm2m_context_t * contextP)
                                                                   LWM2M_ACL_OBJECT_ID);
     if (targetPtr)
     {
-        acl_ctrl_oi_t * accCtrlOiP = targetPtr->instanceList;
-        while (accCtrlOiP)
+        while (targetPtr->instanceList)
         {
-            lwm2m_free(accCtrlOiP->accCtrlValListP);
-            accCtrlOiP = accCtrlOiP->nextP;
+            acl_ctrl_oi_t * accCtrlOiP = targetPtr->instanceList;
+            targetPtr->instanceList = accCtrlOiP->nextP;
             lwm2m_free(accCtrlOiP);
         }
     }
