@@ -74,6 +74,8 @@ lwm2m_context_t * lwm2m_init(void * userData)
         contextP->userData = userData;
         srand((int)lwm2m_gettime());
         contextP->nextMID = rand();
+        contextP->lastRxMID = (uint16_t) - 1;
+        contextP->lastRxMIDValid = false;
     }
 
     return contextP;

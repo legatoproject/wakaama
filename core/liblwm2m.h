@@ -720,6 +720,8 @@ typedef struct
     void *                     bootstrapUserData;
 #endif
     uint16_t                nextMID;
+    uint16_t                lastRxMID;
+    bool                    lastRxMIDValid;
     lwm2m_transaction_t *   transactionList;
     void *                  userData;
 } lwm2m_context_t;
