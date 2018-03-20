@@ -762,6 +762,8 @@ int lwm2m_data_push(lwm2m_context_t * contextP,
                     uint16_t * midP
                     );
 
+void lwm2m_end_push(void);
+
 void lwm2m_set_push_callback(lwm2m_push_ack_callback_t callbackP);
 
 bool lwm2m_async_response(lwm2m_context_t * contextP,

@@ -195,6 +195,9 @@ void lwm2m_close(lwm2m_context_t * contextP)
     {
         lwm2m_free(contextP->altPath);
     }
+#if SIERRA
+    lwm2m_end_push();
+#endif
 
 #endif
 

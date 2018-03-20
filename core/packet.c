@@ -1020,6 +1020,13 @@ static int prv_data_push(lwm2m_context_t * contextP,
     return COAP_NO_ERROR;
 }
 
+// End lwm2m data push
+void lwm2m_end_push(void)
+{
+    push_state_t * push_stateP = &current_push_state;
+    prv_end_push(push_stateP);
+}
+
 // Initiate a data push transaction at "/push"
 int lwm2m_data_push(lwm2m_context_t * contextP,
                     uint16_t shortServerID,
