@@ -272,7 +272,20 @@ int lwm2m_configure(lwm2m_context_t * contextP,
     int i;
     uint8_t found;
 
+#if SIERRA
+    LOG_ARG("endpointName: %s, numObject: %d", endpointName, numObject);
+    if (msisdn)
+    {
+        LOG_ARG("msisdn: %s", msisdn);
+    }
+    if (altPath)
+    {
+        LOG_ARG("altPath: %s", altPath);
+    }
+#else
     LOG_ARG("endpointName: \"%s\", msisdn: \"%s\", altPath: \"%s\", numObject: %d", endpointName, msisdn, altPath, numObject);
+#endif
+
     // This API can be called only once for now
     if (contextP->endpointName != NULL || contextP->objectList != NULL) return COAP_400_BAD_REQUEST;
 

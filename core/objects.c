@@ -60,6 +60,9 @@
 #include <stdio.h>
 
 #if SIERRA
+
+#include <lwm2mcore/lwm2mcore.h>
+
 void object_logPath (lwm2m_uri_t * uriP)
 {
     if ((uriP->flag & LWM2M_URI_FLAG_OBJECT_ID) != 0 )

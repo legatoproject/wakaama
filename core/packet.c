@@ -94,6 +94,7 @@ Contains code snippets which are:
 
 #if SIERRA
 #include <lwm2mcore/lwm2mcore.h>
+#include <internalCoapHandler.h>
 
 #define PRV_QUERY_BUFFER_LENGTH 200
 

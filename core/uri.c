@@ -99,7 +99,14 @@ lwm2m_uri_t * uri_decode(char * altPath,
     lwm2m_uri_t * uriP;
     int readNum;
 
+#if SIERRA
+    if (altPath)
+    {
+        LOG_ARG("altPath: \"%s\"", altPath);
+    }
+#else
     LOG_ARG("altPath: \"%s\"", altPath);
+#endif
 
     uriP = (lwm2m_uri_t *)lwm2m_malloc(sizeof(lwm2m_uri_t));
     if (NULL == uriP) return NULL;
