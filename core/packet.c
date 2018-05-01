@@ -146,20 +146,10 @@ static bool is_block_transfer(coap_packet_t * message, uint32_t * block_num, uin
 }
 #endif
 
-static bool record_received_mid(lwm2m_context_t * contextP,
-                                uint16_t mid)
-{
-    bool validMid = (!contextP->lastRxMIDValid || (contextP->lastRxMID + 1 == mid));
-    contextP->lastRxMID = (contextP->lastRxMID != mid) ? mid : contextP->lastRxMID;
-    contextP->lastRxMIDValid = (!contextP->lastRxMIDValid) ? true : contextP->lastRxMIDValid;
-    return validMid;
-}
-
 static uint8_t handle_request(lwm2m_context_t * contextP,
                               void * fromSessionH,
                               coap_packet_t * message,
-                              coap_packet_t * response,
-                              bool validMid)
+                              coap_packet_t * response)
 {
     lwm2m_uri_t * uriP = NULL;
     uint8_t result = COAP_IGNORE;
@@ -207,12 +197,8 @@ static uint8_t handle_request(lwm2m_context_t * contextP,
                     coap_init_message(response, COAP_TYPE_ACK, 0, message->mid);
                     message_send(contextP, response, fromSessionH);
 
-                    LOG_ARG("Valid(%u) mid(%u)", validMid, message->mid);
-                    if (validMid)
-                    {
-                        // Get actual response from user app
-                        return lwm2mcore_CallCoapEventHandler(message);
-                    }
+                    // Get actual response from user app
+                    return lwm2mcore_CallCoapEventHandler(message);
                 }
             }
         }
@@ -435,7 +421,6 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                          int length,
                          void * fromSessionH)
 {
-    uint8_t validMid = false;
     uint8_t coap_error_code = NO_ERROR;
     static coap_packet_t message[1];
     static coap_packet_t response[1];
@@ -449,7 +434,6 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
     coap_error_code = coap_parse_message(message, buffer, (uint16_t)length);
     if (coap_error_code == NO_ERROR)
     {
-        LOG_ARG("Last received mid/valid %u/%u", contextP->lastRxMID, contextP->lastRxMIDValid);
         LOG_ARG("Parsed: blk: %u ver %u, type %u, tkl %u, code %u.%.2u, mid %u, Content type: %d",
                 message->block1_num, message->version, message->type, message->token_len, message->code >> 5,
                 message->code & 0x1F, message->mid, message->content_type);
@@ -519,11 +503,6 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                     // handle block 1
                     coap_error_code = coap_block1_handler(&serverP->block1Data, message->mid, message->payload, message->payload_len, block1_size, block1_num, block1_more, &complete_buffer, &complete_buffer_size);
 
-                    if (!block1_more)
-                    {
-                        validMid = record_received_mid(contextP, message->mid);
-                    }
-
                     // if payload is complete, replace it in the coap message.
                     if (coap_error_code == NO_ERROR)
                     {
@@ -540,13 +519,9 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 coap_error_code = COAP_501_NOT_IMPLEMENTED;
 #endif
             }
-            else
-            {
-                validMid = record_received_mid(contextP, message->mid);
-            }
             if (coap_error_code == NO_ERROR)
             {
-                coap_error_code = handle_request(contextP, fromSessionH, message, response, validMid);
+                coap_error_code = handle_request(contextP, fromSessionH, message, response);
             }
             if (coap_error_code==NO_ERROR)
             {
