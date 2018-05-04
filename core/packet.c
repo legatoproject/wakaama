@@ -146,10 +146,33 @@ static bool is_block_transfer(coap_packet_t * message, uint32_t * block_num, uin
 }
 #endif
 
+static bool record_received_mid(lwm2m_server_t * serverP,
+                                uint16_t mid)
+{
+    uint16_t expectedMid = serverP->midReceived + 1;
+    bool validMid;
+
+    if (!serverP->midReceived || (mid == expectedMid))
+    {
+        validMid = true;
+        serverP->midReceived = true;
+        serverP->lastRxMID = mid;
+    }
+    else
+    {
+        validMid = false;
+        LOG_ARG("WARNING: Received unexpected request midReceived(%u) MID(%u != %u)",
+            serverP->midReceived, mid, expectedMid);
+    }
+
+    return validMid;
+}
+
 static uint8_t handle_request(lwm2m_context_t * contextP,
                               void * fromSessionH,
                               coap_packet_t * message,
-                              coap_packet_t * response)
+                              coap_packet_t * response,
+                              bool validMid)
 {
     lwm2m_uri_t * uriP = NULL;
     uint8_t result = COAP_IGNORE;
@@ -197,8 +220,12 @@ static uint8_t handle_request(lwm2m_context_t * contextP,
                     coap_init_message(response, COAP_TYPE_ACK, 0, message->mid);
                     message_send(contextP, response, fromSessionH);
 
-                    // Get actual response from user app
-                    return lwm2mcore_CallCoapEventHandler(message);
+                    LOG_ARG("Valid(%u) mid(%u)", validMid, message->mid);
+                    if (validMid)
+                    {
+                        // Get actual response from user app
+                        return lwm2mcore_CallCoapEventHandler(message);
+                    }
                 }
             }
         }
@@ -444,6 +471,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
             uint16_t block_size = REST_MAX_CHUNK_SIZE;
             uint32_t block_offset = 0;
             int64_t new_offset = 0;
+            bool validMid = true;
 
             /* prepare response */
             if (message->type == COAP_TYPE_CON)
@@ -519,9 +547,26 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 coap_error_code = COAP_501_NOT_IMPLEMENTED;
 #endif
             }
+            else
+            {
+#ifdef LWM2M_CLIENT_MODE
+                // get server
+                lwm2m_server_t *serverP = utils_findServer(contextP, fromSessionH);
+#ifdef LWM2M_BOOTSTRAP
+                if (serverP == NULL)
+                {
+                    serverP = utils_findBootstrapServer(contextP, fromSessionH);
+                }
+#endif
+#endif
+                if (serverP != NULL)
+                {
+                    validMid = record_received_mid(serverP, message->mid);
+                }
+            }
             if (coap_error_code == NO_ERROR)
             {
-                coap_error_code = handle_request(contextP, fromSessionH, message, response);
+                coap_error_code = handle_request(contextP, fromSessionH, message, response, validMid);
             }
             if (coap_error_code==NO_ERROR)
             {
