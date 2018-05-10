@@ -91,7 +91,8 @@ void object_logPath (lwm2m_uri_t * uriP)
 #endif
 
 uint8_t object_checkReadable(lwm2m_context_t * contextP,
-                             lwm2m_uri_t * uriP)
+                             lwm2m_uri_t * uriP,
+                             lwm2m_attributes_t * attrP)
 {
     uint8_t result;
     lwm2m_object_t * targetP;
@@ -105,7 +106,7 @@ uint8_t object_checkReadable(lwm2m_context_t * contextP,
 
     if (!LWM2M_URI_IS_SET_INSTANCE(uriP)) return COAP_205_CONTENT;
 
-    if (NULL == lwm2m_list_find(targetP->instanceList, uriP->instanceId)) return COAP_404_NOT_FOUND;
+    if (NULL == LWM2M_LIST_FIND(targetP->instanceList, uriP->instanceId)) return COAP_404_NOT_FOUND;
 
     if (!LWM2M_URI_IS_SET_RESOURCE(uriP)) return COAP_205_CONTENT;
 
@@ -116,47 +117,21 @@ uint8_t object_checkReadable(lwm2m_context_t * contextP,
     dataP->id = uriP->resourceId;
 
     result = targetP->readFunc(uriP->instanceId, &size, &dataP, targetP);
-    lwm2m_data_free(1, dataP);
-
-    return result;
-}
-
-uint8_t object_checkNumeric(lwm2m_context_t * contextP,
-                            lwm2m_uri_t * uriP)
-{
-    uint8_t result;
-    lwm2m_object_t * targetP;
-    lwm2m_data_t * dataP = NULL;
-    int size;
-
-    LOG_URI(uriP);
-    if (!LWM2M_URI_IS_SET_RESOURCE(uriP)) return COAP_405_METHOD_NOT_ALLOWED;
-
-    targetP = (lwm2m_object_t *)LWM2M_LIST_FIND(contextP->objectList, uriP->objectId);
-    if (NULL == targetP) return COAP_404_NOT_FOUND;
-    if (NULL == targetP->readFunc) return COAP_405_METHOD_NOT_ALLOWED;
-
-    size = 1;
-    dataP = lwm2m_data_new(1);
-    if (dataP == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
-
-    dataP->id = uriP->resourceId;
-
-    result = targetP->readFunc(uriP->instanceId, &size, &dataP, targetP);
     if (result == COAP_205_CONTENT)
     {
-        switch (dataP->type)
+        if (attrP->toSet & ATTR_FLAG_NUMERIC)
         {
-        case LWM2M_TYPE_INTEGER:
-        case LWM2M_TYPE_FLOAT:
-            break;
-        default:
-            result = COAP_405_METHOD_NOT_ALLOWED;
+            switch (dataP->type)
+            {
+                case LWM2M_TYPE_INTEGER:
+                case LWM2M_TYPE_FLOAT:
+                    break;
+                default:
+                    result = COAP_405_METHOD_NOT_ALLOWED;
+            }
         }
     }
-
     lwm2m_data_free(1, dataP);
-
     return result;
 }
 

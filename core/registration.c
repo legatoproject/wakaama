@@ -363,12 +363,14 @@ static int prv_updateRegistration(lwm2m_context_t * contextP,
             transaction_free(transaction);
             return COAP_500_INTERNAL_SERVER_ERROR;
         }
+
         payload = lwm2m_malloc(payload_length);
         if(!payload)
         {
             transaction_free(transaction);
             return COAP_500_INTERNAL_SERVER_ERROR;
         }
+
         payload_length = object_getRegisterPayload(contextP, payload, payload_length);
         if(payload_length == 0)
         {
@@ -594,7 +596,7 @@ void registration_deregister(lwm2m_context_t * contextP,
     coap_set_header_uri_path(transaction->message, serverP->location);
 
     transaction->callback = prv_handleDeregistrationReply;
-    transaction->userData = (void *) contextP;
+    transaction->userData = (void *) serverP;
 
     contextP->transactionList = (lwm2m_transaction_t *)LWM2M_LIST_ADD(contextP->transactionList, transaction);
     if (transaction_send(contextP, transaction) == 0)

@@ -839,7 +839,7 @@ int main(int argc, char *argv[])
                                             "Result will be displayed asynchronously.", prv_time_client, NULL},
             {"attr", "Write value-related attributes to a client.", " attr CLIENT# URI LT GT [STEP]\r\n"
                                             "   CLIENT#: client number as returned by command 'list'\r\n"
-                                            "   URI: uri to write attributes to such as /3, /3/0/2, /1024/11, /1024/0/1\r\n"
+                                            "   URI: uri to write attributes to such as /3/0/2, /1024/0/1\r\n"
                                             "   LT: \"Less than\" value\r\n"
                                             "   GT: \"Greater than\" value\r\n"
                                             "   STEP: \"Step\" value\r\n"
@@ -856,7 +856,7 @@ int main(int argc, char *argv[])
                                             "   CLIENT#: client number as returned by command 'list'\r\n"
                                             "   URI: uri of the instance to delete such as /1024/11\r\n"
                                             "Result will be displayed asynchronously.", prv_delete_client, NULL},
-            {"create", "create an Object instance.", " create CLIENT# URI DATA\r\n"
+            {"create", "Create an Object instance.", " create CLIENT# URI DATA\r\n"
                                             "   CLIENT#: client number as returned by command 'list'\r\n"
                                             "   URI: uri to which create the Object Instance such as /1024, /1024/45 \r\n"
                                             "   DATA: data to initialize the new Object Instance (0-255 for object 31024) \r\n"
