@@ -524,8 +524,6 @@ typedef struct _lwm2m_server_
     void *                  sessionH;
     lwm2m_status_t          status;
     char *                  location;
-    uint16_t                lastRxMID;    // last MID received
-    bool                    midReceived;  // received MID flag
     bool                    dirty;
     lwm2m_block1_data_t *   block1Data;   // buffer to handle block1 data, should be replace by a list to support several block1 transfer by server.
 } lwm2m_server_t;
