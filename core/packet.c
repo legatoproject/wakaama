@@ -381,7 +381,8 @@ static void prv_push_callback(lwm2m_transaction_t * transacP, void * message)
         // wait till the last block is acked.
         if (block1_more)
         {
-            if ((transacP->ack_received) && (COAP_408_REQ_ENTITY_INCOMPLETE != packet->code))
+            if ((transacP->ack_received) && (COAP_408_REQ_ENTITY_INCOMPLETE != packet->code)
+                && (COAP_413_ENTITY_TOO_LARGE != packet->code))
             {
                 LOG("Wait for ack of last block.");
                 return;

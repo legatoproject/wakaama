@@ -215,10 +215,6 @@ static void prv_handleRegistrationReply(lwm2m_transaction_t * transacP,
             targetP->location = coap_get_multi_option_as_string(packet->location_path);
 
             LOG("Registration successful");
-#if SIERRA
-            /* Notify that the device is registered */
-            smanager_SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_SUCCESS);
-#endif
         }
         else
         {
