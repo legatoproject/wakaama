@@ -23,6 +23,11 @@
 #include <string.h>
 #include <stdio.h>
 
+#if SIERRA
+#include <lwm2mcore/lwm2mcore.h>
+#include "sessionManager.h"
+#endif
+
 #ifdef LWM2M_CLIENT_MODE
 #ifdef LWM2M_BOOTSTRAP
 
@@ -216,6 +221,10 @@ uint8_t bootstrap_handleFinish(lwm2m_context_t * context,
         {
             LOG("Bootstrap server status changed to STATE_BS_FINISHING");
             bootstrapServer->status = STATE_BS_FINISHING;
+#if SIERRA
+            /* Notify that the bootstrap is finishing */
+            smanager_SendSessionEvent(EVENT_TYPE_BOOTSTRAP, EVENT_STATUS_FINISHING);
+#endif
             return COAP_204_CHANGED;
         }
         else
