@@ -170,6 +170,7 @@
 #define URI_REGISTRATION_SEGMENT_LEN    2
 #define URI_BOOTSTRAP_SEGMENT           "bs"
 #define URI_BOOTSTRAP_SEGMENT_LEN       2
+#define URI_REGISTRATION_ID_MAX_LEN     32      // strlen("/rd/65534") + 1
 #if SIERRA
 #define URI_DATAPUSH_SEGMENT            "push"
 #define URI_DATAPUSH_SEGMENT_LEN        4

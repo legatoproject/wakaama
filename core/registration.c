@@ -65,7 +65,7 @@
 #include "sessionManager.h"
 #endif
 
-#define MAX_LOCATION_LENGTH 10      // strlen("/rd/65534") + 1
+#define MAX_LOCATION_LENGTH 32      // strlen("/rd/65534") + 1
 
 #ifdef LWM2M_CLIENT_MODE
 
@@ -216,6 +216,8 @@ static void prv_handleRegistrationReply(lwm2m_transaction_t * transacP,
 
             LOG("Registration successful");
 #if SIERRA
+            lwm2mcore_SetRegistrationID(targetP->shortID, targetP->location);
+
             /* Notify that the device is registered */
             smanager_SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_SUCCESS);
 #endif
@@ -332,11 +334,22 @@ static void prv_handleRegistrationUpdateReply(lwm2m_transaction_t * transacP,
         if (packet != NULL && packet->code == COAP_204_CHANGED)
         {
             targetP->status = STATE_REGISTERED;
+
             LOG("Registration update successful");
+#if SIERRA
+            /* Notify that the device is registered */
+            smanager_SendSessionEvent(EVENT_TYPE_REG_UPDATE, EVENT_STATUS_DONE_SUCCESS);
+#endif
         }
         else
         {
+
+#if SIERRA
+            lwm2mcore_DeleteRegistrationID(targetP->shortID);
+            targetP->status = STATE_DEREGISTERED;
+#else
             targetP->status = STATE_REG_FAILED;
+#endif
             LOG("Registration update failed");
         }
     }
@@ -349,6 +362,15 @@ static int prv_updateRegistration(lwm2m_context_t * contextP,
     lwm2m_transaction_t * transaction;
     uint8_t * payload = NULL;
     int payload_length;
+
+    if (server->sessionH == NULL)
+    {
+        server->sessionH = lwm2m_connect_server(server->secObjInstID, contextP->userData);
+    }
+    if (NULL == server->sessionH)
+    {
+        return COAP_503_SERVICE_UNAVAILABLE;
+    }
 
     transaction = transaction_new(server->sessionH, COAP_POST, NULL, NULL, contextP->nextMID++, 4, NULL);
     if (transaction == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
@@ -500,6 +522,17 @@ uint8_t registration_start(lwm2m_context_t * contextP)
         {
             result = prv_register(contextP, targetP);
         }
+        else if (targetP->status == STATE_REG_UPDATE_NEEDED
+              || targetP->status == STATE_REG_FULL_UPDATE_NEEDED)
+        {
+            result = prv_updateRegistration(contextP, targetP,
+                                            targetP->status == STATE_REG_FULL_UPDATE_NEEDED);
+            if (result != COAP_NO_ERROR)
+            {
+                // Fallback to a regular registration procedure
+                result = prv_register(contextP, targetP);
+            }
+        }
         targetP = targetP->next;
     }
 
@@ -528,7 +561,6 @@ lwm2m_status_t registration_getStatus(lwm2m_context_t * contextP)
 
     while (targetP != NULL)
     {
-        LOG_ARG("targetP->status: %s", STR_STATUS(targetP->status));
         switch (targetP->status)
         {
             case STATE_REGISTERED:
@@ -545,9 +577,12 @@ lwm2m_status_t registration_getStatus(lwm2m_context_t * contextP)
                 reg_status = STATE_REG_PENDING;
                 break;
 
+            case STATE_DEREGISTERED:
+                reg_status = STATE_DEREGISTERED;
+                break;
+
             case STATE_REG_FAILED:
             case STATE_DEREG_PENDING:
-            case STATE_DEREGISTERED:
             default:
                 break;
         }
@@ -1348,6 +1383,10 @@ void registration_step(lwm2m_context_t * contextP,
             }
         }
         break;
+
+        case STATE_DEREGISTERED:
+            *timeoutP = 1;
+            break;
 
         case STATE_REG_UPDATE_NEEDED:
             prv_updateRegistration(contextP, targetP, false);

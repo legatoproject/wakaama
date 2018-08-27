@@ -164,7 +164,7 @@ void bootstrap_step(lwm2m_context_t * contextP,
             break;
 
         case STATE_BS_INITIATED:
-            // waiting
+            lwm2mcore_DeleteRegistrationID(-1);
             break;
 
         case STATE_BS_PENDING:

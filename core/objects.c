@@ -902,13 +902,29 @@ int object_getServers(lwm2m_context_t * contextP, bool checkOnly)
                 }
                 else
                 {
+#if SIERRA
+                    char registrationID[URI_REGISTRATION_ID_MAX_LEN] = {0};
+#endif
                     if (0 != prv_getMandatoryInfo(serverObjP, serverInstP->id, targetP))
                     {
                         lwm2m_free(targetP);
                         lwm2m_data_free(size, dataP);
                         return -1;
                     }
-                    targetP->status = STATE_DEREGISTERED;
+#if SIERRA
+                    if (lwm2mcore_GetRegistrationID(targetP->shortID, registrationID, sizeof(registrationID) - 1))
+                    {
+                        lwm2m_free(targetP->location);
+                        targetP->location = lwm2m_strdup(registrationID);
+                        targetP->status = STATE_REG_FULL_UPDATE_NEEDED;
+                    }
+                    else
+                    {
+                        targetP->status = STATE_DEREGISTERED;
+                    }
+#else
+                     targetP->status = STATE_DEREGISTERED;
+#endif
                     if (checkOnly)
                     {
                         lwm2m_free(targetP);

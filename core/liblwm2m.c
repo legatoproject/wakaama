@@ -509,6 +509,16 @@ next_step:
             contextP->state = STATE_READY;
             break;
 
+#if SIERRA
+        /* This case happens when an UPDATE request is rejected by the server due to a lifetime
+           expiry. In this case, the client enter a DEREGISTERED state and needs to perform a
+           full REGISTER request. That's why the state is changed to STATE_INITIAL */
+        case STATE_DEREGISTERED:
+            contextP->state = STATE_INITIAL;
+            goto next_step;
+            break;
+#endif
+
         case STATE_REG_FAILED:
 #if SIERRA
             /* Notify that the device can not register */
@@ -532,15 +542,29 @@ next_step:
     break;
 
     case STATE_READY:
-        if (registration_getStatus(contextP) == STATE_REG_FAILED)
         {
-            // TODO avoid infinite loop by checking the bootstrap info is different
-            contextP->state = STATE_BOOTSTRAP_REQUIRED;
+            lwm2m_status_t status = registration_getStatus(contextP);
+            if (status == STATE_REG_FAILED)
+            {
+                // TODO avoid infinite loop by checking the bootstrap info is different
+                contextP->state = STATE_BOOTSTRAP_REQUIRED;
 #if SIERRA
-            LOG_ARG ("STATE_READY -> %s", STR_STATE(contextP->state));
+                LOG_ARG ("STATE_READY -> %s", STR_STATE(contextP->state));
 #endif
-            goto next_step;
-            break;
+                goto next_step;
+                break;
+            }
+#if SIERRA
+            /* This case happens when an UPDATE request is rejected by the server due to a lifetime
+               expiry. In this case, the client enter a DEREGISTERED state and needs to perform a
+               full REGISTER request. That's why the state is changed to STATE_INITIAL */
+            else if (status == STATE_DEREGISTERED)
+            {
+                contextP->state = STATE_INITIAL;
+                goto next_step;
+                break;
+            }
+#endif
         }
         break;
 
