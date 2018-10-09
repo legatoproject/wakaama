@@ -46,9 +46,6 @@
 #include <string.h>
 #include <stdio.h>
 
-// the maximum payload transferred by block1 we accumulate per server
-#define MAX_BLOCK1_SIZE 4096
-
 uint8_t coap_block1_handler(lwm2m_block1_data_t ** pBlock1Data,
                             uint16_t mid,
                             uint8_t * buffer,
@@ -107,7 +104,7 @@ uint8_t coap_block1_handler(lwm2m_block1_data_t ** pBlock1Data,
           }
 
           // is it too large?
-          if (block1Data->block1bufferSize + length >= MAX_BLOCK1_SIZE) {
+          if (block1Data->block1bufferSize + length >= COAP_BLOCK1_SIZE) {
               return COAP_413_ENTITY_TOO_LARGE;
           }
           // re-alloc new buffer
