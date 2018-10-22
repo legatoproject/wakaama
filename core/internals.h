@@ -393,4 +393,23 @@ bool acl_addObjectInstance(lwm2m_context_t * contextP, lwm2m_data_t data);
 bool acl_deleteRelatedObjectInstance(lwm2m_context_t * contextP, uint16_t oid, uint16_t oiid);
 void acl_erase(lwm2m_context_t * contextP);
 void acl_free(lwm2m_context_t * contextP);
+
+#ifdef SIERRA
+// defined in block1-stream.c
+uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
+                                   coap_packet_t * message,
+                                   uint8_t ** outputBuffer,
+                                   size_t * outputLength);
+
+void coap_end_block1_stream(lwm2m_block1_data_t ** pBlock1Data,
+                            uint8_t ** outputBuffer,
+                            size_t * outputLength);
+
+// defined in block2-stream.c
+coap_status_t coap_block2_stream_handler(coap_packet_t * message,
+                                         uint32_t block2Num);
+
+void coap_end_block2_stream();
+#endif
+
 #endif

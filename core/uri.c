@@ -54,6 +54,11 @@
 #include <string.h>
 #include <ctype.h>
 
+#if SIERRA
+#include <lwm2mcore/lwm2mcore.h>
+#include <lwm2mcore/coapHandlers.h>
+#endif
+
 static int prv_parseNumber(uint8_t * uriString,
                             size_t uriLength,
                             size_t * headP)
@@ -340,63 +345,3 @@ int uri_toString(lwm2m_uri_t * uriP,
 
     return head;
 }
-
-#if SIERRA
-
-bool IsNumeric
-(
-    char * element,
-    size_t elementLength
-)
-{
-    int i;
-
-    for (i = 0; i < elementLength; i++)
-    {
-        if (!isdigit(element[i]))
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool IsCoapUri
-(
-    multi_option_t *uriPath
-)
-{
-    multi_option_t *path;
-
-    if (uriPath == NULL)
-        return false;
-
-    if (!((strncmp("le_",    (char *)uriPath->data, 3) == 0) ||
-          (strncmp("lwm2m",  (char *)uriPath->data, 5) == 0) ||
-          (strncmp("legato", (char *)uriPath->data, 6) == 0) ||
-          (strncmp("bs",     (char *)uriPath->data, 2) == 0)))
-    {
-        for (path = uriPath; path != NULL; path = path->next)
-        {
-            if (!IsNumeric((char *)path->data, path->len))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    for (path = uriPath->next; path != NULL; path = path->next)
-    {
-        if (!IsNumeric((char *)path->data, path->len))
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-#endif

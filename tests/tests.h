@@ -32,5 +32,7 @@ CU_ErrorCode create_object_read_suit();
 CU_ErrorCode create_convert_numbers_suit();
 CU_ErrorCode create_tlv_json_suit();
 CU_ErrorCode create_block1_suit();
+CU_ErrorCode create_block1_stream_suit();
+CU_ErrorCode create_block2_stream_suit();
 
 #endif /* TESTS_H_ */

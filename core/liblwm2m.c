@@ -103,7 +103,12 @@ static void prv_deleteServer(lwm2m_server_t * serverP, void *userData)
     {
         lwm2m_free(serverP->location);
     }
-    free_block1_buffer(serverP->block1Data);
+#if SIERRA
+        coap_end_block1_stream(&serverP->block1Data, NULL, 0);
+        coap_end_block2_stream();
+#else
+        free_block1_buffer(serverP->block1Data);
+#endif
     lwm2m_free(serverP);
 }
 
@@ -396,7 +401,10 @@ int lwm2m_step(lwm2m_context_t * contextP,
 
     LOG_ARG("timeoutP: %" PRId64, *timeoutP);
     tv_sec = lwm2m_gettime();
-    if (tv_sec < 0) return COAP_500_INTERNAL_SERVER_ERROR;
+    if (tv_sec < 0)
+    {
+        return COAP_500_INTERNAL_SERVER_ERROR;
+    }
 
 #ifdef LWM2M_CLIENT_MODE
     LOG_ARG("State: %s", STR_STATE(contextP->state));
@@ -406,7 +414,10 @@ next_step:
     switch (contextP->state)
     {
     case STATE_INITIAL:
-        if (0 != prv_refreshServerList(contextP)) return COAP_503_SERVICE_UNAVAILABLE;
+        if (0 != prv_refreshServerList(contextP))
+        {
+            return COAP_503_SERVICE_UNAVAILABLE;
+        }
         if (contextP->serverList != NULL)
         {
             contextP->state = STATE_REGISTER_REQUIRED;

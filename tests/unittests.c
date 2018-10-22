@@ -27,12 +27,16 @@
 void * lwm2m_connect_server(uint16_t secObjInstID,
                             void * userData)
 {
-    return (void *)secObjInstID;
+    (void) userData;
+    (void) secObjInstID;
+    return NULL;
 }
 
 void lwm2m_close_connection(void * sessionH,
                             void * userData)
 {
+    (void) sessionH;
+    (void) userData;
     return;
 }
 
@@ -51,12 +55,21 @@ CU_ErrorCode add_tests(CU_pSuite pSuite, struct TestTable* testTable)
 int main()
 {
    /* initialize the CUnit test registry */
-   if (CUE_SUCCESS != CU_initialize_registry())
+   if (CUE_SUCCESS != CU_initialize_registry()){
       return CU_get_error();
-
-    if (CUE_SUCCESS != create_tlv_json_suit()) {
-       goto exit;
    }
+
+   if (CUE_SUCCESS != create_block1_suit()) {
+      goto exit;
+   }
+
+    if (CUE_SUCCESS != create_block1_stream_suit()) {
+       goto exit;
+    }
+
+    if (CUE_SUCCESS != create_block2_stream_suit()) {
+       goto exit;
+    }
 
    CU_basic_set_mode(CU_BRM_VERBOSE);
    CU_basic_run_tests();

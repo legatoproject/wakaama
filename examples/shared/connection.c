@@ -13,7 +13,7 @@
  * Contributors:
  *    David Navarro, Intel Corporation - initial API and implementation
  *    Pascal Rieux - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 #include <stdlib.h>
@@ -116,7 +116,15 @@ connection_t * connection_create(connection_t * connList,
     hints.ai_family = addressFamily;
     hints.ai_socktype = SOCK_DGRAM;
 
-    if (0 != getaddrinfo(host, port, &hints, &servinfo) || servinfo == NULL) return NULL;
+    if (0 != getaddrinfo(host, port, &hints, &servinfo))
+    {
+        if (NULL != servinfo)
+        {
+            free(servinfo);
+        }
+
+        return NULL;
+    }
 
     // we test the various addresses
     s = -1;
@@ -168,7 +176,7 @@ int connection_send(connection_t *connP,
 
 #ifdef WITH_LOGS
     char s[INET6_ADDRSTRLEN];
-    in_port_t port;
+    in_port_t port = 0;
 
     s[0] = 0;
 
@@ -194,7 +202,12 @@ int connection_send(connection_t *connP,
     while (offset != length)
     {
         nbSent = sendto(connP->sock, buffer + offset, length - offset, 0, (struct sockaddr *)&(connP->addr), connP->addrLen);
-        if (nbSent == -1) return -1;
+
+        if (nbSent == -1)
+        {
+            return -1;
+        }
+
         offset += nbSent;
     }
     return 0;
@@ -203,7 +216,8 @@ int connection_send(connection_t *connP,
 uint8_t lwm2m_buffer_send(void * sessionH,
                           uint8_t * buffer,
                           size_t length,
-                          void * userdata)
+                          void * userdata,
+                          bool firstBlock)
 {
     connection_t * connP = (connection_t*) sessionH;
 

@@ -86,14 +86,14 @@ Contains code snippets which are:
 
 
 #include "internals.h"
-
 #include <stdlib.h>
 #include <string.h>
-
 #include <stdio.h>
 
 #if SIERRA
+#include <ctype.h>
 #include <lwm2mcore/lwm2mcore.h>
+#include <lwm2mcore/coapHandlers.h>
 #include <internalCoapHandler.h>
 
 #define PRV_QUERY_BUFFER_LENGTH 200
@@ -118,6 +118,9 @@ typedef struct
 
 static push_state_t current_push_state;
 static async_state_t current_async_state;
+static uint32_t ExpBlock2Num = 0;
+static uint32_t Block1Num = 0;
+
 #endif
 
 static void handle_reset(lwm2m_context_t * contextP,
@@ -143,6 +146,78 @@ static bool is_block_transfer(coap_packet_t * message, uint32_t * block_num, uin
         LOG("Async state buffer is NULL");
         return false;
     }
+}
+
+static bool IsNumeric
+(
+    char * element,
+    size_t elementLength
+)
+{
+    size_t i;
+
+    for (i = 0; i < elementLength; i++)
+    {
+        if (!isdigit(element[i]))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool IsExternalCoapHandler
+(
+    void
+)
+{
+    // Check if an external C handler exists
+    if (lwm2mcore_GetCoapExternalHandler() != NULL)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+static bool IsCoapUri
+(
+    multi_option_t *uriPath
+)
+{
+    multi_option_t *path;
+
+    if (uriPath == NULL)
+    {
+        return false;
+    }
+
+    if (!((strncmp("le_",    (char *)uriPath->data, 3) == 0) ||
+          (strncmp("lwm2m",  (char *)uriPath->data, 5) == 0) ||
+          (strncmp("legato", (char *)uriPath->data, 6) == 0) ||
+          (strncmp("bs",     (char *)uriPath->data, 2) == 0)))
+    {
+        for (path = uriPath; path != NULL; path = path->next)
+        {
+            if (!IsNumeric((char *)path->data, path->len))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    for (path = uriPath->next; path != NULL; path = path->next)
+    {
+        if (!IsNumeric((char *)path->data, path->len))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 #endif
 
@@ -173,11 +248,25 @@ static uint8_t handle_request(lwm2m_context_t * contextP,
         {
             LOG ("No payload in the URI.");
         }
+        /* If an external URI exists and is not lwm2m oriented send to external app */
+        else if (IsExternalCoapHandler() && IsCoapUri(message->uri_path))
+        {
+            if (coap_get_header_block2(message, &block_num, NULL, &block_size, &block_offset))
+            {
+                return coap_block2_stream_handler(message, ExpBlock2Num);
+            }
+            else
+            {
+                /* Send an ack (empty response) */
+                LOG("Send an empty response");
+                coap_init_message(response, COAP_TYPE_ACK, 0, message->mid);
+                message_send(contextP, response, fromSessionH);
+
+                return lwm2mcore_CallCoapExternalHandler(message, LWM2MCORE_STREAM_NONE);
+            }
+        }
         else
         {
-            lwm2mcore_DataDump("COAP Message URI",
-                                message->uri_path->data, message->uri_path->len);
-
             // Check if the prefix matches the legato app objects
             if (IsCoapUri(message->uri_path))
             {
@@ -294,7 +383,6 @@ static lwm2m_transaction_t * prv_init_push_transaction
     lwm2m_context_t * contextP,
     lwm2m_server_t * server,
     lwm2m_media_type_t contentType
-
 )
 {
     lwm2m_transaction_t * transaction;
@@ -305,12 +393,12 @@ static lwm2m_transaction_t * prv_init_push_transaction
     query_length = utils_stringCopy(query, PRV_QUERY_BUFFER_LENGTH, "?ep=");
     if (query_length < 0)
     {
-        return -1;
+        return NULL;
     }
     res = utils_stringCopy(query + query_length, PRV_QUERY_BUFFER_LENGTH - query_length, contextP->endpointName);
     if (res < 0)
     {
-        return -1;
+        return NULL;
     }
 
     transaction = transaction_new(server->sessionH, COAP_POST, NULL, NULL, contextP->nextMID++, 4, NULL);
@@ -324,6 +412,44 @@ static lwm2m_transaction_t * prv_init_push_transaction
     return transaction;
 }
 
+static lwm2m_transaction_t * prv_init_notification
+(
+    lwm2m_context_t * contextP,
+    lwm2m_server_t * server,
+    lwm2m_media_type_t contentType,
+    char * uri,
+    uint8_t* token,
+    uint8_t token_len
+)
+{
+    lwm2m_transaction_t * transaction;
+    char query[PRV_QUERY_BUFFER_LENGTH];
+    int query_length = 0;
+    int res;
+
+    query_length = utils_stringCopy(query, PRV_QUERY_BUFFER_LENGTH, "?ep=");
+    if (query_length < 0)
+    {
+        return NULL;
+    }
+    res = utils_stringCopy(query + query_length, PRV_QUERY_BUFFER_LENGTH - query_length, contextP->endpointName);
+    if (res < 0)
+    {
+        return NULL;
+    }
+
+    transaction = transaction_new(server->sessionH, COAP_POST, NULL, NULL, contextP->nextMID++, token, token_len);
+    if (transaction == NULL)
+    {
+        return NULL;
+    }
+
+    coap_set_header_uri_query(transaction->message, query);
+    coap_set_header_uri_path(transaction->message, uri);
+    coap_set_header_content_type(transaction->message, contentType);
+
+    return transaction;
+}
 
 static void prv_end_push(push_state_t * push_stateP)
 {
@@ -344,6 +470,23 @@ static void prv_end_async()
         lwm2m_free(async_stateP->bufferP);
         async_stateP->bufferP = NULL;
         async_stateP->length = 0;
+    }
+}
+
+static void prv_ack_callback(lwm2m_transaction_t * transacP, void * message)
+{
+    coap_packet_t * ack_message = transacP->message;
+    coap_packet_t * packet = (coap_packet_t *)message;
+
+    if (transacP->ack_received && (COAP_408_REQ_ENTITY_INCOMPLETE != packet->code))
+    {
+        LOG_ARG("mid = %d, retransmit_count = %d ", ack_message->mid, transacP->retrans_counter);
+        lwm2mcore_AckCallback(LWM2MCORE_ACK_RECEIVED);
+    }
+    else
+    {
+        LOG_ARG("mid = %d, retransmit_count = %d ", ack_message->mid, transacP->retrans_counter);
+        lwm2mcore_AckCallback(LWM2MCORE_ACK_TIMEOUT);
     }
 }
 
@@ -427,6 +570,13 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
     static coap_packet_t response[1];
     uint16_t payload_length;
     uint8_t* payloadP;
+    uint32_t block1_num;
+    uint8_t  block1_more;
+    uint16_t block1_size;
+    uint8_t * complete_buffer = NULL;
+    size_t complete_buffer_size;
+    lwm2m_server_t * serverP;
+
 #if SIERRA
     push_state_t * push_stateP = &current_push_state;
 #endif
@@ -465,7 +615,8 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
             }
 
             /* get offset for blockwise transfers */
-            if (coap_get_header_block2(message, &block_num, NULL, &block_size, &block_offset))
+            if (coap_get_header_block2(message, &block_num, NULL, &block_size, &block_offset)
+                && (coap_error_code == NO_ERROR))
             {
                 LOG_ARG("Blockwise: block request %u (%u/%u) @ %u bytes", block_num, block_size, REST_MAX_CHUNK_SIZE, block_offset);
                 block_size = MIN(block_size, REST_MAX_CHUNK_SIZE);
@@ -473,11 +624,11 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
             }
 
             /* handle block1 option */
-            if (IS_OPTION(message, COAP_OPTION_BLOCK1))
+            if (IS_OPTION(message, COAP_OPTION_BLOCK1)
+                && (coap_error_code == NO_ERROR))
             {
 #ifdef LWM2M_CLIENT_MODE
                 // get server
-                lwm2m_server_t * serverP;
                 serverP = utils_findServer(contextP, fromSessionH);
 #ifdef LWM2M_BOOTSTRAP
                 if (serverP == NULL)
@@ -491,18 +642,22 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 }
                 else
                 {
-                    uint32_t block1_num;
-                    uint8_t  block1_more;
-                    uint16_t block1_size;
-                    uint8_t * complete_buffer = NULL;
-                    size_t complete_buffer_size;
-
                     // parse block1 header
                     coap_get_header_block1(message, &block1_num, &block1_more, &block1_size, NULL);
                     LOG_ARG("Blockwise: block1 request NUM %u (SZX %u/ SZX Max%u) MORE %u", block1_num, block1_size, REST_MAX_CHUNK_SIZE, block1_more);
 
                     // handle block 1
-                    coap_error_code = coap_block1_handler(&serverP->block1Data, message->mid, message->payload, message->payload_len, block1_size, block1_num, block1_more, &complete_buffer, &complete_buffer_size);
+#if SIERRA
+                    /* If an external URI exists and is not lwm2m oriented send to external app */
+                    if (IsExternalCoapHandler() && IsCoapUri(message->uri_path))
+                    {
+                        coap_error_code = coap_block1_stream_handler(&serverP->block1Data, message, &complete_buffer, &complete_buffer_size);
+                    }
+                    else
+#endif
+                    {
+                        coap_error_code = coap_block1_handler(&serverP->block1Data, message->mid, message->payload, message->payload_len, block1_size, block1_num, block1_more, &complete_buffer, &complete_buffer_size);
+                    }
 
                     // if payload is complete, replace it in the coap message.
                     if (coap_error_code == NO_ERROR)
@@ -618,6 +773,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
             {
                 if (1 == coap_set_status_code(response, coap_error_code))
                 {
+                    LOG_ARG("sending coap response code %d", coap_error_code);
                     coap_error_code = message_send(contextP, response, fromSessionH);
                 }
             }
@@ -655,7 +811,14 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
 
             case COAP_TYPE_ACK:
 #if SIERRA
-                if (IS_OPTION(message, COAP_OPTION_BLOCK1) && (message->code == COAP_231_CONTINUE))
+                /* Is an external app initiated CoAP block-1 stream? */
+                if (IS_OPTION(message, COAP_OPTION_BLOCK1)
+                    && (message->code == COAP_231_CONTINUE)
+                    && IsExternalCoapHandler())
+                {
+                    coap_error_code = coap_block1_stream_handler(NULL, message, &complete_buffer, &complete_buffer_size);
+                }
+                else if (IS_OPTION(message, COAP_OPTION_BLOCK1) && (message->code == COAP_231_CONTINUE))
                 {
                     lwm2m_transaction_t * transaction;
                     lwm2m_transaction_t * transacP;
@@ -740,7 +903,6 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 }
                 else if (coap_error_code == COAP_204_CHANGED)
                 {
-                    // ToDo: use this for push ack
                     LOG("All blocks transferred.");
                     prv_end_push(push_stateP);
                 }
@@ -782,6 +944,92 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
 
 
 #if SIERRA
+void prv_send_empty_response(lwm2m_context_t * contextP,
+                             lwm2m_server_t * server,
+                             uint16_t mid)
+{
+    coap_packet_t response;
+
+    /* Send an ack (empty response) */
+    LOG("Send an empty response");
+    coap_init_message(&response, COAP_TYPE_ACK, 0, mid);
+    message_send(contextP, &response, server->sessionH);
+}
+
+bool prv_send_response(lwm2m_context_t * contextP,
+                       lwm2m_server_t * server,
+                       uint16_t mid,
+                       uint32_t code,
+                       uint8_t* token,
+                       uint8_t token_len,
+                       uint16_t content_type,
+                       uint8_t * payload,
+                       size_t payload_len,
+                       lwm2mcore_StreamStatus_t streamStatus
+                       )
+{
+    lwm2m_transaction_t * transaction;
+    async_state_t * async_stateP = &current_async_state;
+    coap_packet_t * response;
+
+    /* initialize the transaction */
+    transaction = transaction_new(server->sessionH, COAP_GET, NULL, NULL, mid, token_len, token);
+    if (transaction == NULL)
+    {
+        return false;
+    }
+
+    /* set the result code */
+    coap_set_status_code(transaction->message, code);
+
+    /* set uri */
+    coap_set_header_uri_path(transaction->message, server->location);
+
+    /* set the payload type & payload */
+    if (payload != NULL)
+    {
+        coap_set_header_content_type(transaction->message, content_type);
+
+        /* initiate block transfer for a bigger block */
+        if (streamStatus == LWM2MCORE_TX_STREAM_START)
+        {
+            ExpBlock2Num = 0;
+            LOG_ARG("Initiate Blockwise transfer with block_size %u", REST_MAX_CHUNK_SIZE);
+            coap_set_header_block2(transaction->message, ExpBlock2Num++, 1, REST_MAX_CHUNK_SIZE);
+        }
+        else if (streamStatus == LWM2MCORE_TX_STREAM_IN_PROGRESS)
+        {
+            coap_set_header_block2(transaction->message, ExpBlock2Num++, 1, REST_MAX_CHUNK_SIZE);
+        }
+        else if (streamStatus == LWM2MCORE_TX_STREAM_END)
+        {
+            coap_set_header_block2(transaction->message, ExpBlock2Num++, 0, REST_MAX_CHUNK_SIZE);
+            ExpBlock2Num = 0;
+        }
+
+        coap_set_payload(transaction->message, payload, MIN(payload_len, REST_MAX_CHUNK_SIZE));
+    }
+
+    response = transaction->message;
+    LOG_ARG("Response code = %d", response->code);
+    LOG_ARG("Payload length = %d", response->payload_len);
+    LOG_ARG("Block transfer %u/%u/%u @ %u bytes",
+                                response->block2_num,
+                                response->block2_more,
+                                response->block2_size,
+                                response->block2_offset);
+
+    /* send transaction */
+    contextP->transactionList = (lwm2m_transaction_t *)LWM2M_LIST_ADD(contextP->transactionList, transaction);
+    if (transaction_send(contextP, transaction) != 0)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+
 bool prv_async_response(lwm2m_context_t * contextP,
                         lwm2m_server_t * server,
                         uint16_t mid,
@@ -856,6 +1104,218 @@ bool prv_async_response(lwm2m_context_t * contextP,
     return true;
 }
 
+bool prv_send_notification(lwm2m_context_t * contextP,
+                           lwm2m_server_t * serverP,
+                           uint8_t* uri,
+                           uint8_t* token,
+                           uint8_t token_len,
+                           uint16_t content_type,
+                           uint8_t * payloadP,
+                           size_t payload_len,
+                           lwm2mcore_StreamStatus_t streamStatus
+                           )
+{
+    lwm2m_transaction_t * transaction;
+    bool isMore = false;
+
+    if ((payloadP == NULL) || (payload_len == 0))
+    {
+        LOG("Payload invalid");
+        return false;
+    }
+
+    transaction = prv_init_notification(contextP, serverP, content_type, uri, token, token_len);
+
+    if (transaction == NULL)
+    {
+        return false;
+    }
+
+    /* set the payload type & payload */
+    if (payloadP != NULL)
+    {
+        /* initiate block transfer for a bigger block */
+        switch (streamStatus)
+        {
+            case LWM2MCORE_STREAM_NONE:
+                // Notify when data push is acked or timed out
+                transaction->callback = prv_ack_callback;
+                break;
+
+            case LWM2MCORE_TX_STREAM_START:
+                Block1Num = 0;
+                isMore = true;
+                coap_set_header_block1(transaction->message, Block1Num, isMore, REST_MAX_CHUNK_SIZE);
+                LOG_ARG("TX Stream Status %d BlockNum %d isMore %d", streamStatus, Block1Num, isMore);
+                break;
+
+            case LWM2MCORE_TX_STREAM_IN_PROGRESS:
+                Block1Num++;
+                isMore = true;
+                coap_set_header_block1(transaction->message, Block1Num, isMore, REST_MAX_CHUNK_SIZE);
+                LOG_ARG("TX Stream Status %d BlockNum %d isMore %d", streamStatus, Block1Num, isMore);
+                break;
+
+            case LWM2MCORE_TX_STREAM_END:
+                Block1Num++;
+                isMore = false;
+                coap_set_header_block1(transaction->message, Block1Num, isMore, REST_MAX_CHUNK_SIZE);
+                LOG_ARG("TX Stream Status %d BlockNum %d isMore %d", streamStatus, Block1Num, isMore);
+
+                Block1Num = 0;
+
+                // Notify when data push is acked or timed out
+                transaction->callback = prv_ack_callback;
+                break;
+
+            case LWM2MCORE_TX_STREAM_ERROR:
+                Block1Num = 0;
+                break;
+
+            default:
+                break;
+        }
+
+        // set payload
+        coap_set_payload(transaction->message, payloadP, MIN(payload_len, REST_MAX_CHUNK_SIZE));
+    }
+
+    /* Initiate the transaction */
+    contextP->transactionList = (lwm2m_transaction_t *)LWM2M_LIST_ADD(contextP->transactionList, transaction);
+
+    if (transaction_send(contextP, transaction) != 0)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+static lwm2m_server_t * GetRegisteredServer
+(
+    lwm2m_context_t * contextP,
+    uint16_t shortServerId
+)
+{
+    lwm2m_server_t * targetP = NULL;
+
+    LOG_ARG("State: %s, shortServerId: %d", STR_STATE(contextP->state), shortServerId);
+
+    targetP = contextP->serverList;
+    if (targetP == NULL)
+    {
+        if (object_getServers(contextP, false) == -1)
+        {
+            LOG("No server found");
+            return NULL;
+        }
+    }
+    while (targetP != NULL)
+    {
+        if (targetP->shortID == shortServerId)
+        {
+            /* found the server, send async response */
+            if (targetP->status == STATE_REGISTERED)
+            {
+                return targetP;
+            }
+            else
+            {
+                /* server is not registered */
+                return NULL;
+            }
+        }
+        targetP = targetP->next;
+    }
+
+    /* no server found */
+    return NULL;
+}
+
+bool lwm2m_send_response(lwm2m_context_t * contextP,
+                         uint16_t shortServerId,
+                         uint16_t mid,
+                         uint32_t code,
+                         uint8_t* token,
+                         uint8_t token_len,
+                         uint16_t content_type,
+                         uint8_t * payload,
+                         size_t payload_len,
+                         lwm2mcore_StreamStatus_t streamStatus)
+{
+    lwm2m_server_t * targetP = GetRegisteredServer(contextP, shortServerId);
+
+    if (targetP)
+    {
+        return prv_send_response(contextP,
+                                 targetP,
+                                 mid,
+                                 code,
+                                 token,
+                                 token_len,
+                                 content_type,
+                                 payload,
+                                 payload_len,
+                                 streamStatus);
+    }
+    else
+    {
+        LOG("Server unregistered");
+        return false;
+    }
+}
+
+bool lwm2m_send_empty_response(lwm2m_context_t * contextP,
+                                uint16_t shortServerId,
+                                uint16_t mid)
+{
+    lwm2m_server_t * targetP = GetRegisteredServer(contextP, shortServerId);
+
+    if (targetP)
+    {
+        prv_send_empty_response(contextP,
+                                targetP,
+                                mid);
+        return true;
+    }
+    else
+    {
+        LOG("Server unregistered");
+        return false;
+    }
+}
+
+bool lwm2m_send_notification(lwm2m_context_t * contextP,
+                             uint16_t shortServerId,
+                             uint8_t* uri,
+                             uint8_t* token,
+                             uint8_t token_len,
+                             uint16_t content_type,
+                             uint8_t * payload,
+                             size_t payload_len,
+                             lwm2mcore_StreamStatus_t streamStatus)
+{
+    lwm2m_server_t * targetP = GetRegisteredServer(contextP, shortServerId);
+
+    if (targetP)
+    {
+        return prv_send_notification(contextP,
+                                     targetP,
+                                     uri,
+                                     token,
+                                     token_len,
+                                     content_type,
+                                     payload,
+                                     payload_len,
+                                     streamStatus);
+    }
+    else
+    {
+        LOG("Server unregistered");
+        return false;
+    }
+}
+
 bool lwm2m_async_response(lwm2m_context_t * contextP,
                           uint16_t shortServerId,
                           uint16_t mid,
@@ -866,50 +1326,27 @@ bool lwm2m_async_response(lwm2m_context_t * contextP,
                           uint8_t * payload,
                           size_t payload_len)
 {
-    lwm2m_server_t * targetP;
-    uint8_t result;
+    lwm2m_server_t * targetP = GetRegisteredServer(contextP, shortServerId);
 
-    LOG_ARG("State: %s, shortServerId: %d", STR_STATE(contextP->state), shortServerId);
-
-    targetP = contextP->serverList;
-    if (targetP == NULL)
+    if (targetP)
     {
-        if (object_getServers(contextP, false) == -1)
-        {
-            LOG("No server found");
-            return false;
-        }
+        return prv_async_response(contextP,
+                                  targetP,
+                                  mid,
+                                  code,
+                                  token,
+                                  token_len,
+                                  content_type,
+                                  payload,
+                                  payload_len);
     }
-    while (targetP != NULL)
+    else
     {
-        if (targetP->shortID == shortServerId)
-        {
-            /* found the server, send async response */
-            if (targetP->status == STATE_REGISTERED)
-            {
-                return prv_async_response(contextP,
-                                          targetP,
-                                          mid,
-                                          code,
-                                          token,
-                                          token_len,
-                                          content_type,
-                                          payload,
-                                          payload_len);
-            }
-            else
-            {
-                LOG("Server unregistered");
-                return false;
-            }
-        }
-        targetP = targetP->next;
+        LOG("Server unregistered");
+        return false;
     }
-
-    /* no server found */
-    return false;
 }
-#endif
+#endif // SIERRA
 
 uint8_t message_send(lwm2m_context_t * contextP,
                      coap_packet_t * message,

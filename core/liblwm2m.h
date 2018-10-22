@@ -775,6 +775,33 @@ bool lwm2m_async_response(lwm2m_context_t * contextP,
                           uint16_t content_type,
                           uint8_t * payload,
                           size_t payloadLength);
+
+bool lwm2m_send_response(lwm2m_context_t * contextP,
+                         uint16_t shortServerId,
+                         uint16_t mid,
+                         uint32_t code,
+                         uint8_t* token,
+                         uint8_t token_len,
+                         uint16_t content_type,
+                         uint8_t * payload,
+                         size_t payload_len,
+                         uint32_t streamStatus);
+
+bool lwm2m_send_notification(lwm2m_context_t * contextP,
+                             uint16_t shortServerId,
+                             uint8_t* uri,
+                             uint8_t* token,
+                             uint8_t token_len,
+                             uint16_t content_type,
+                             uint8_t * payload,
+                             size_t payload_len,
+                             uint32_t streamStatus
+                             );
+
+bool lwm2m_send_empty_response(lwm2m_context_t * contextP,
+                               uint16_t shortServerId,
+                               uint16_t mid);
+
 #endif /* SIERRA */
 #endif
 
