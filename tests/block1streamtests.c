@@ -334,7 +334,7 @@ static struct TestTable table[] = {
         { "test of test_block1_stream_retransmit()", test_block1_stream_retransmit },
         { "test of test_block1_stream_large()", test_block1_stream_large },
         { "test of test_block1_stream_incomplete()", test_block1_stream_incomplete },
-        { NULL, NULL },//
+        { NULL, NULL },
 };
 
 

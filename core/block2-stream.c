@@ -17,15 +17,24 @@
 
 #define MAX_BLOCK2_SIZE 1024
 
-uint16_t LastBlock2Mid = 0;
+typedef struct
+{
+    coap_packet_t response;
+    uint8_t payload[MAX_BLOCK2_SIZE];
+    uint32_t payload_len;
+    uint32_t expBlock2Num;
+    uint16_t lastBlock2Mid;
+}block2_context_t;
+
+static block2_context_t blk2_ctxt;
 
 void coap_end_block2_stream()
 {
-    LastBlock2Mid = 0;
+    memset(&blk2_ctxt, 0, sizeof(block2_context_t));
 }
 
 coap_status_t coap_block2_stream_handler(coap_packet_t* message,
-                                         uint32_t expBlockNum)
+                                         coap_packet_t* response)
 {
     uint16_t blockSize;
     uint32_t blockNum;
@@ -35,6 +44,12 @@ coap_status_t coap_block2_stream_handler(coap_packet_t* message,
 
     // parse block2 header
     coap_get_header_block2(message, &blockNum, &blockMore, &blockSize, NULL);
+
+    LOG_ARG("Block transfer %u/%u/%u @ %u bytes",
+                                                    message->block2_num,
+                                                    message->block2_more,
+                                                    message->block2_size,
+                                                    message->block2_offset);
 
     switch (message->code)
     {
@@ -57,22 +72,34 @@ coap_status_t coap_block2_stream_handler(coap_packet_t* message,
             }
 
             // Check if this is a retransmission request
-            if ((message->mid <= LastBlock2Mid) && (message->mid != 0))
+            // If the current mid is equal to the last block2 mid, retransmit the saved block.
+            // We are not supposed to receive any message id's that are older than current mid.
+            if ((message->mid <= blk2_ctxt.lastBlock2Mid) && (message->mid != 0))
             {
-                // Just ignore this message for now.
                 LOG_ARG("Retransmission for block number %d", blockNum);
-                return COAP_IGNORE;;
-            }
 
-            if (blockNum != expBlockNum)
+                memcpy(response, &blk2_ctxt.response, sizeof(coap_packet_t));
+                coap_set_payload(response, blk2_ctxt.payload, MIN(blk2_ctxt.payload_len, MAX_BLOCK2_SIZE));
+
+                LOG_ARG("Response code = %d", response->code);
+                LOG_ARG("Payload length = %d", response->payload_len);
+                LOG_ARG("Block transfer %u/%u/%u @ %u bytes",
+                                            response->block2_num,
+                                            response->block2_more,
+                                            response->block2_size,
+                                            response->block2_offset);
+
+                return response->code;
+            }
+            else if (blockNum != blk2_ctxt.expBlock2Num)
             {
-                LOG_ARG("Unexpected block number %d, expected block num %d", blockNum, expBlockNum);
+                LOG_ARG("Unexpected block number %d, expected block num %d", blockNum, blk2_ctxt.expBlock2Num);
                 lwm2mcore_CallCoapExternalHandler(message, LWM2MCORE_TX_STREAM_ERROR);
                 coap_end_block2_stream();
                 return COAP_500_INTERNAL_SERVER_ERROR;
             }
 
-            LastBlock2Mid = message->mid;
+            blk2_ctxt.lastBlock2Mid = message->mid;
             rc = lwm2mcore_CallCoapExternalHandler(message, LWM2MCORE_TX_STREAM_IN_PROGRESS);
             break;
 
@@ -85,4 +112,30 @@ coap_status_t coap_block2_stream_handler(coap_packet_t* message,
 
     return rc;
 }
+
+void coap_block2_handle_response(coap_packet_t* response,
+                                 lwm2mcore_StreamStatus_t streamStatus)
+{
+    /* initiate block transfer for a bigger block */
+    if (streamStatus == LWM2MCORE_TX_STREAM_START)
+    {
+        blk2_ctxt.expBlock2Num = 0;
+        LOG_ARG("Initiate Blockwise transfer with block_size %u", REST_MAX_CHUNK_SIZE);
+        coap_set_header_block2(response, blk2_ctxt.expBlock2Num++, 1, REST_MAX_CHUNK_SIZE);
+    }
+    else if (streamStatus == LWM2MCORE_TX_STREAM_IN_PROGRESS)
+    {
+        coap_set_header_block2(response, blk2_ctxt.expBlock2Num++, 1, REST_MAX_CHUNK_SIZE);
+    }
+    else if (streamStatus == LWM2MCORE_TX_STREAM_END)
+    {
+        coap_set_header_block2(response, blk2_ctxt.expBlock2Num++, 0, REST_MAX_CHUNK_SIZE);
+    }
+
+    /* save last block */
+    memcpy(&blk2_ctxt.response, response, sizeof(coap_packet_t));
+    memcpy(blk2_ctxt.payload, response->payload, response->payload_len);
+    blk2_ctxt.payload_len = response->payload_len;
+}
+
 #endif

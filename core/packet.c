@@ -118,7 +118,6 @@ typedef struct
 
 static push_state_t current_push_state;
 static async_state_t current_async_state;
-static uint32_t ExpBlock2Num = 0;
 static uint32_t Block1Num = 0;
 
 #endif
@@ -253,15 +252,11 @@ static uint8_t handle_request(lwm2m_context_t * contextP,
         {
             if (coap_get_header_block2(message, &block_num, NULL, &block_size, &block_offset))
             {
-                return coap_block2_stream_handler(message, ExpBlock2Num);
+                return coap_block2_stream_handler(message, response);
             }
             else
             {
-                /* Send an ack (empty response) */
-                LOG("Send an empty response");
-                coap_init_message(response, COAP_TYPE_ACK, 0, message->mid);
-                message_send(contextP, response, fromSessionH);
-
+                /* Send a piggyback response to save bandwidth. */
                 return lwm2mcore_CallCoapExternalHandler(message, LWM2MCORE_STREAM_NONE);
             }
         }
@@ -281,12 +276,7 @@ static uint8_t handle_request(lwm2m_context_t * contextP,
                 }
                 else
                 {
-                    /* Send an ack (empty response) */
-                    LOG("Send an empty response");
-                    coap_init_message(response, COAP_TYPE_ACK, 0, message->mid);
-                    message_send(contextP, response, fromSessionH);
-
-                    // Get actual response from user app
+                    /* Send a piggyback response to save bandwidth. */
                     return lwm2mcore_CallCoapEventHandler(message);
                 }
             }
@@ -438,7 +428,7 @@ static lwm2m_transaction_t * prv_init_notification
         return NULL;
     }
 
-    transaction = transaction_new(server->sessionH, COAP_POST, NULL, NULL, contextP->nextMID++, token, token_len);
+    transaction = transaction_new(server->sessionH, COAP_POST, NULL, NULL, contextP->nextMID++, token_len, token);
     if (transaction == NULL)
     {
         return NULL;
@@ -968,49 +958,29 @@ bool prv_send_response(lwm2m_context_t * contextP,
                        lwm2mcore_StreamStatus_t streamStatus
                        )
 {
-    lwm2m_transaction_t * transaction;
     async_state_t * async_stateP = &current_async_state;
-    coap_packet_t * response;
+    static coap_packet_t response[1];
 
-    /* initialize the transaction */
-    transaction = transaction_new(server->sessionH, COAP_GET, NULL, NULL, mid, token_len, token);
-    if (transaction == NULL)
+    /* initialize the response */
+    coap_init_message(response, COAP_TYPE_ACK, code, mid);
+
+    /* copy token */
+    if (token_len)
     {
-        return false;
+        coap_set_header_token(response, token, token_len);
     }
 
-    /* set the result code */
-    coap_set_status_code(transaction->message, code);
-
     /* set uri */
-    coap_set_header_uri_path(transaction->message, server->location);
+    coap_set_header_uri_path(response, server->location);
 
     /* set the payload type & payload */
     if (payload != NULL)
     {
-        coap_set_header_content_type(transaction->message, content_type);
-
-        /* initiate block transfer for a bigger block */
-        if (streamStatus == LWM2MCORE_TX_STREAM_START)
-        {
-            ExpBlock2Num = 0;
-            LOG_ARG("Initiate Blockwise transfer with block_size %u", REST_MAX_CHUNK_SIZE);
-            coap_set_header_block2(transaction->message, ExpBlock2Num++, 1, REST_MAX_CHUNK_SIZE);
-        }
-        else if (streamStatus == LWM2MCORE_TX_STREAM_IN_PROGRESS)
-        {
-            coap_set_header_block2(transaction->message, ExpBlock2Num++, 1, REST_MAX_CHUNK_SIZE);
-        }
-        else if (streamStatus == LWM2MCORE_TX_STREAM_END)
-        {
-            coap_set_header_block2(transaction->message, ExpBlock2Num++, 0, REST_MAX_CHUNK_SIZE);
-            ExpBlock2Num = 0;
-        }
-
-        coap_set_payload(transaction->message, payload, MIN(payload_len, REST_MAX_CHUNK_SIZE));
+        coap_set_header_content_type(response, content_type);
+        coap_set_payload(response, payload, MIN(payload_len, REST_MAX_CHUNK_SIZE));
+        coap_block2_handle_response(response, streamStatus);
     }
 
-    response = transaction->message;
     LOG_ARG("Response code = %d", response->code);
     LOG_ARG("Payload length = %d", response->payload_len);
     LOG_ARG("Block transfer %u/%u/%u @ %u bytes",
@@ -1019,12 +989,8 @@ bool prv_send_response(lwm2m_context_t * contextP,
                                 response->block2_size,
                                 response->block2_offset);
 
-    /* send transaction */
-    contextP->transactionList = (lwm2m_transaction_t *)LWM2M_LIST_ADD(contextP->transactionList, transaction);
-    if (transaction_send(contextP, transaction) != 0)
-    {
-        return false;
-    }
+    /* send the message */
+    message_send(contextP, &response, server->sessionH);
 
     return true;
 }

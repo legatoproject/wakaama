@@ -407,7 +407,7 @@ void coap_end_block1_stream(lwm2m_block1_data_t ** pBlock1Data,
 
 // defined in block2-stream.c
 coap_status_t coap_block2_stream_handler(coap_packet_t * message,
-                                         uint32_t block2Num);
+                                         coap_packet_t * response);
 
 void coap_end_block2_stream();
 #endif
