@@ -14,6 +14,7 @@
 
 #if SIERRA
 #include <lwm2mcore/lwm2mcore.h>
+#include <internalCoapHandler.h>
 
 #define MAX_BLOCK2_SIZE 1024
 
@@ -43,7 +44,7 @@ coap_status_t coap_block2_stream_handler(coap_packet_t* message,
     coap_status_t rc = COAP_IGNORE;
 
     // parse block2 header
-    coap_get_header_block2(message, &blockNum, &blockMore, &blockSize, NULL);
+    coap_get_header_block2(message, (uint32_t*)&blockNum, (uint8_t*)&blockMore, &blockSize, NULL);
 
     LOG_ARG("Block transfer %u/%u/%u @ %u bytes",
                                                     message->block2_num,

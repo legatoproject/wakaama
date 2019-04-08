@@ -112,7 +112,7 @@ static int prv_getRegistrationQueryLength(lwm2m_context_t * contextP,
     if (0 != server->lifetime)
     {
         index += strlen(QUERY_DELIMITER QUERY_LIFETIME);
-        res = utils_intToText(server->lifetime, buffer, sizeof(buffer));
+        res = utils_intToText(server->lifetime, (uint8_t *)buffer, sizeof(buffer));
         if (res == 0) return 0;
         index += res;
     }
@@ -175,7 +175,7 @@ static int prv_getRegistrationQuery(lwm2m_context_t * contextP,
         res = utils_stringCopy(buffer + index, length - index, QUERY_DELIMITER QUERY_LIFETIME);
         if (res < 0) return 0;
         index += res;
-        res = utils_intToText(server->lifetime, buffer + index, length - index);
+        res = utils_intToText(server->lifetime, (uint8_t *)(buffer + index), length - index);
         if (res == 0) return 0;
         index += res;
     }
@@ -219,7 +219,7 @@ static void prv_handleRegistrationReply(lwm2m_transaction_t * transacP,
             lwm2mcore_SetRegistrationID(targetP->shortID, targetP->location);
 
             /* Notify that the device is registered */
-            smanager_SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_SUCCESS);
+            smanager_SendSessionEvent(EVENT_TYPE_REGISTRATION, EVENT_STATUS_DONE_SUCCESS, NULL);
 #endif
         }
         else
@@ -334,11 +334,12 @@ static void prv_handleRegistrationUpdateReply(lwm2m_transaction_t * transacP,
         if (packet != NULL && packet->code == COAP_204_CHANGED)
         {
             targetP->status = STATE_REGISTERED;
+            targetP->regUpdateOptions = 0;
 
             LOG("Registration update successful");
 #if SIERRA
             /* Notify that the device is registered */
-            smanager_SendSessionEvent(EVENT_TYPE_REG_UPDATE, EVENT_STATUS_DONE_SUCCESS);
+            smanager_SendSessionEvent(EVENT_TYPE_REG_UPDATE, EVENT_STATUS_DONE_SUCCESS, NULL);
 #endif
         }
         else
@@ -346,7 +347,7 @@ static void prv_handleRegistrationUpdateReply(lwm2m_transaction_t * transacP,
 
 #if SIERRA
             lwm2mcore_DeleteRegistrationID(targetP->shortID);
-            targetP->status = STATE_DEREGISTERED;
+            targetP->status = STATE_REG_UPDATE_FAILED;
 #else
             targetP->status = STATE_REG_FAILED;
 #endif
@@ -355,13 +356,225 @@ static void prv_handleRegistrationUpdateReply(lwm2m_transaction_t * transacP,
     }
 }
 
+static int prv_getUpdateRegistrationQueryLength(lwm2m_context_t * contextP,
+                                                lwm2m_server_t * server)
+{
+    int index = 0;
+    int res = 0;
+    char buffer[21];
+    bool isStarterAdded = false;
+
+    if ((((server->regUpdateOptions) & LWM2M_REG_UPDATE_LIFETIME) == LWM2M_REG_UPDATE_LIFETIME)
+       && (0 != server->lifetime))
+    {
+        isStarterAdded = true;
+        index += strlen(QUERY_STARTER QUERY_LIFETIME);
+        res = utils_intToText(server->lifetime, (uint8_t *)buffer, sizeof(buffer));
+        LOG_ARG("res %d", res);
+        if (res == 0)
+        {
+            return 0;
+        }
+        index += res;
+    }
+
+    if (((server->regUpdateOptions) & LWM2M_REG_UPDATE_BINDING_MODE) ==
+                                                                LWM2M_REG_UPDATE_BINDING_MODE)
+    {
+        if(false == isStarterAdded)
+        {
+            index += strlen(QUERY_STARTER);
+            isStarterAdded = true;
+        }
+        else
+        {
+            index += strlen(QUERY_DELIMITER);
+        }
+
+        switch (server->binding)
+        {
+            case BINDING_U:
+                index += strlen("b=U");
+                break;
+            case BINDING_UQ:
+                index += strlen("b=UQ");
+                break;
+            case BINDING_S:
+                index += strlen("b=S");
+                break;
+            case BINDING_SQ:
+                index += strlen("b=SQ");
+                break;
+            case BINDING_US:
+                index += strlen("b=US");
+                break;
+            case BINDING_UQS:
+                index += strlen("b=UQS");
+                break;
+            default:
+                return 0;
+        }
+    }
+
+    if (((server->regUpdateOptions) & LWM2M_REG_UPDATE_SMS_NUMBER) == LWM2M_REG_UPDATE_SMS_NUMBER)
+    {
+        if(contextP->msisdn)
+        {
+            if(false == isStarterAdded)
+            {
+                index += strlen(QUERY_STARTER);
+            }
+            else
+            {
+                index += strlen(QUERY_DELIMITER);
+            }
+            index += strlen(QUERY_SMS);
+            index += strlen(contextP->msisdn);
+        }
+    }
+
+    return index;
+}
+
+static int prv_getUpdateRegistrationQuery(lwm2m_context_t * contextP,
+                                          lwm2m_server_t * server,
+                                          char * buffer,
+                                          size_t length)
+{
+    int index = 0;
+    int res = 0;
+    bool isStarterAdded = false;
+
+    if ((((server->regUpdateOptions) & LWM2M_REG_UPDATE_LIFETIME) == LWM2M_REG_UPDATE_LIFETIME)
+       && (0 != server->lifetime))
+    {
+        isStarterAdded = true;
+        res = utils_stringCopy(buffer + index, length - index, QUERY_STARTER QUERY_LIFETIME);
+        if (res < 0)
+        {
+            return 0;
+        }
+
+        index += res;
+        res = utils_intToText(server->lifetime, (uint8_t *)(buffer + index), length - index);
+        if (res == 0)
+        {
+            return 0;
+        }
+        index += res;
+    }
+
+    if (((server->regUpdateOptions) & LWM2M_REG_UPDATE_BINDING_MODE) ==
+                                                            LWM2M_REG_UPDATE_BINDING_MODE)
+    {
+        if (false == isStarterAdded)
+        {
+            res = utils_stringCopy(buffer + index, length - index, QUERY_STARTER);
+            if (res < 0)
+            {
+                return 0;
+            }
+            index += res;
+            isStarterAdded = true;
+        }
+        else
+        {
+            res = utils_stringCopy(buffer + index, length - index, QUERY_DELIMITER);
+            if (res < 0)
+            {
+                return 0;
+            }
+            index += res;
+        }
+
+        switch (server->binding)
+        {
+            case BINDING_U:
+                res = utils_stringCopy(buffer + index, length - index, "b=U");
+                break;
+            case BINDING_UQ:
+                res = utils_stringCopy(buffer + index, length - index, "b=UQ");
+                break;
+            case BINDING_S:
+                res = utils_stringCopy(buffer + index, length - index, "b=S");
+                break;
+            case BINDING_SQ:
+                res = utils_stringCopy(buffer + index, length - index, "b=SQ");
+                break;
+            case BINDING_US:
+                res = utils_stringCopy(buffer + index, length - index, "b=US");
+                break;
+            case BINDING_UQS:
+                res = utils_stringCopy(buffer + index, length - index, "b=UQS");
+                break;
+            default:
+                res = -1;
+        }
+        if (res < 0)
+        {
+            return 0;
+        }
+        index += res;
+    }
+
+    if ((((server->regUpdateOptions) & LWM2M_REG_UPDATE_SMS_NUMBER) == LWM2M_REG_UPDATE_SMS_NUMBER)
+       && (contextP->msisdn))
+    {
+        if (false == isStarterAdded)
+        {
+            res = utils_stringCopy(buffer + index, length - index, QUERY_STARTER);
+            if (res < 0)
+            {
+                return 0;
+            }
+            index += res;
+        }
+        else
+        {
+            res = utils_stringCopy(buffer + index, length - index, QUERY_DELIMITER);
+            if (res < 0)
+            {
+                return 0;
+            }
+            index += res;
+        }
+
+        res = utils_stringCopy(buffer + index, length - index, QUERY_SMS);
+        if (res < 0)
+        {
+            return 0;
+        }
+        index += res;
+        res = utils_stringCopy(buffer + index, length - index, contextP->msisdn);
+        if (res < 0)
+        {
+            return 0;
+        }
+        index += res;
+    }
+
+    if (index < (int)length)
+    {
+        buffer[index++] = '\0';
+    }
+    else
+    {
+        return 0;
+    }
+
+    return index;
+}
+
 static int prv_updateRegistration(lwm2m_context_t * contextP,
-                                  lwm2m_server_t * server,
-                                  bool withObjects)
+                                  lwm2m_server_t * server)
 {
     lwm2m_transaction_t * transaction;
     uint8_t * payload = NULL;
-    int payload_length;
+    int payload_length = 0;
+    char* query = NULL;
+    int query_length = 0;
+
+    LOG_ARG("Update registration: regUpdateOptions 0x%x", server->regUpdateOptions);
 
     if (server->sessionH == NULL)
     {
@@ -376,31 +589,62 @@ static int prv_updateRegistration(lwm2m_context_t * contextP,
     if (transaction == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
 
     coap_set_header_uri_path(transaction->message, server->location);
-
-    if (withObjects == true)
+    if (server->regUpdateOptions)
     {
-        payload_length = object_getRegisterPayloadBufferLength(contextP);
-        if(payload_length == 0)
+        if(((server->regUpdateOptions)&LWM2M_REG_UPDATE_OBJECT_LIST) == LWM2M_REG_UPDATE_OBJECT_LIST)
         {
-            transaction_free(transaction);
-            return COAP_500_INTERNAL_SERVER_ERROR;
+            payload_length = object_getRegisterPayloadBufferLength(contextP);
+            if(payload_length == 0)
+            {
+                transaction_free(transaction);
+                return COAP_500_INTERNAL_SERVER_ERROR;
+            }
+
+            payload = lwm2m_malloc(payload_length);
+            if(!payload)
+            {
+                transaction_free(transaction);
+                return COAP_500_INTERNAL_SERVER_ERROR;
+            }
+
+            payload_length = object_getRegisterPayload(contextP, payload, payload_length);
+            if(payload_length == 0)
+            {
+                transaction_free(transaction);
+                lwm2m_free(payload);
+                return COAP_500_INTERNAL_SERVER_ERROR;
+            }
         }
 
-        payload = lwm2m_malloc(payload_length);
-        if(!payload)
+        query_length = prv_getUpdateRegistrationQueryLength(contextP, server);
+        if(query_length)
         {
-            transaction_free(transaction);
-            return COAP_500_INTERNAL_SERVER_ERROR;
+            query = lwm2m_malloc(query_length + 1);
+            if(!query)
+            {
+                lwm2m_free(payload);
+                return COAP_500_INTERNAL_SERVER_ERROR;
+            }
+            if(prv_getUpdateRegistrationQuery(contextP, server, query, query_length + 1) != (query_length + 1))
+            {
+                lwm2m_free(payload);
+                lwm2m_free(query);
+                return COAP_500_INTERNAL_SERVER_ERROR;
+            }
+
+            coap_set_header_uri_query(transaction->message, query);
         }
 
-        payload_length = object_getRegisterPayload(contextP, payload, payload_length);
-        if(payload_length == 0)
+        if(payload_length)
         {
-            transaction_free(transaction);
-            lwm2m_free(payload);
-            return COAP_500_INTERNAL_SERVER_ERROR;
+            coap_set_payload(transaction->message, payload, payload_length);
         }
-        coap_set_payload(transaction->message, payload, payload_length);
+    }
+
+    if (query)
+    {
+        /* Dump UPDATE data */
+        lwm2mcore_DataDump( "UPDATE", query, query_length);
     }
 
     transaction->callback = prv_handleRegistrationUpdateReply;
@@ -413,9 +657,10 @@ static int prv_updateRegistration(lwm2m_context_t * contextP,
         server->status = STATE_REG_UPDATE_PENDING;
     }
 
-    if (withObjects == true)
+    if (server->regUpdateOptions)
     {
         lwm2m_free(payload);
+        lwm2m_free(query);
     }
     return COAP_NO_ERROR;
 }
@@ -423,7 +668,7 @@ static int prv_updateRegistration(lwm2m_context_t * contextP,
 // update the registration of a given server
 int lwm2m_update_registration(lwm2m_context_t * contextP,
                               uint16_t shortServerID,
-                              bool withObjects)
+                              uint8_t regUpdateOptions)
 {
     lwm2m_server_t * targetP;
     uint8_t result;
@@ -451,7 +696,7 @@ int lwm2m_update_registration(lwm2m_context_t * contextP,
                 if (targetP->status == STATE_REGISTERED
                  || targetP->status == STATE_REG_UPDATE_PENDING)
                 {
-                    if (withObjects == true)
+                    if (regUpdateOptions)
                     {
                         targetP->status = STATE_REG_FULL_UPDATE_NEEDED;
                     }
@@ -459,16 +704,18 @@ int lwm2m_update_registration(lwm2m_context_t * contextP,
                     {
                         targetP->status = STATE_REG_UPDATE_NEEDED;
                     }
+                    targetP->regUpdateOptions |= regUpdateOptions;
                     return COAP_NO_ERROR;
                 }
                 else if ((targetP->status == STATE_REG_FULL_UPDATE_NEEDED)
                       || (targetP->status == STATE_REG_UPDATE_NEEDED))
                 {
                     // if REG (FULL) UPDATE is already set, returns COAP_NO_ERROR
-                    if (withObjects == true)
+                    if (regUpdateOptions == true)
                     {
                         targetP->status = STATE_REG_FULL_UPDATE_NEEDED;
                     }
+                    targetP->regUpdateOptions |= regUpdateOptions;
                     return COAP_NO_ERROR;
                 }
                 else
@@ -482,7 +729,7 @@ int lwm2m_update_registration(lwm2m_context_t * contextP,
             if (targetP->status == STATE_REGISTERED
              || targetP->status == STATE_REG_UPDATE_PENDING)
             {
-                if (withObjects == true)
+                if (regUpdateOptions == true)
                 {
                     targetP->status = STATE_REG_FULL_UPDATE_NEEDED;
                 }
@@ -490,6 +737,7 @@ int lwm2m_update_registration(lwm2m_context_t * contextP,
                 {
                     targetP->status = STATE_REG_UPDATE_NEEDED;
                 }
+                targetP->regUpdateOptions |= regUpdateOptions;
             }
         }
         targetP = targetP->next;
@@ -518,15 +766,15 @@ uint8_t registration_start(lwm2m_context_t * contextP)
     while (targetP != NULL && result == COAP_NO_ERROR)
     {
         if (targetP->status == STATE_DEREGISTERED
-         || targetP->status == STATE_REG_FAILED)
+         || targetP->status == STATE_REG_FAILED
+         || targetP->status == STATE_REG_UPDATE_FAILED)
         {
             result = prv_register(contextP, targetP);
         }
         else if (targetP->status == STATE_REG_UPDATE_NEEDED
               || targetP->status == STATE_REG_FULL_UPDATE_NEEDED)
         {
-            result = prv_updateRegistration(contextP, targetP,
-                                            targetP->status == STATE_REG_FULL_UPDATE_NEEDED);
+            result = prv_updateRegistration(contextP, targetP);
             if (result != COAP_NO_ERROR)
             {
                 // Fallback to a regular registration procedure
@@ -577,12 +825,15 @@ lwm2m_status_t registration_getStatus(lwm2m_context_t * contextP)
                 reg_status = STATE_REG_PENDING;
                 break;
 
-            case STATE_DEREGISTERED:
-                reg_status = STATE_DEREGISTERED;
+            case STATE_REG_UPDATE_FAILED:
+                reg_status = STATE_REG_UPDATE_FAILED;
+                break;
+
+            case STATE_DEREG_PENDING:
+                reg_status = STATE_DEREG_PENDING;
                 break;
 
             case STATE_REG_FAILED:
-            case STATE_DEREG_PENDING:
             default:
                 break;
         }
@@ -605,11 +856,14 @@ static void prv_handleDeregistrationReply(lwm2m_transaction_t * transacP,
         if (targetP->status == STATE_DEREG_PENDING)
         {
             targetP->status = STATE_DEREGISTERED;
+#if SIERRA
+            lwm2mcore_DeleteRegistrationID(targetP->shortID);
+#endif
         }
     }
 }
 
-void registration_deregister(lwm2m_context_t * contextP,
+bool registration_deregister(lwm2m_context_t * contextP,
                              lwm2m_server_t * serverP)
 {
     lwm2m_transaction_t * transaction;
@@ -620,13 +874,17 @@ void registration_deregister(lwm2m_context_t * contextP,
      || serverP->status == STATE_REG_PENDING
      || serverP->status == STATE_DEREG_PENDING
      || serverP->status == STATE_REG_FAILED
+     || serverP->status == STATE_REG_UPDATE_FAILED
      || serverP->location == NULL)
     {
-        return;
+        return false;
     }
 
     transaction = transaction_new(serverP->sessionH, COAP_DELETE, NULL, NULL, contextP->nextMID++, 4, NULL);
-    if (transaction == NULL) return;
+    if (transaction == NULL)
+    {
+        return false;
+    }
 
     coap_set_header_uri_path(transaction->message, serverP->location);
 
@@ -638,6 +896,8 @@ void registration_deregister(lwm2m_context_t * contextP,
     {
         serverP->status = STATE_DEREG_PENDING;
     }
+
+    return true;
 }
 #endif
 
@@ -1375,7 +1635,7 @@ void registration_step(lwm2m_context_t * contextP,
             if (0 >= interval)
             {
                 LOG("Updating registration");
-                prv_updateRegistration(contextP, targetP, false);
+                prv_updateRegistration(contextP, targetP);
             }
             else if (interval < *timeoutP)
             {
@@ -1384,16 +1644,16 @@ void registration_step(lwm2m_context_t * contextP,
         }
         break;
 
-        case STATE_DEREGISTERED:
+        case STATE_REG_UPDATE_FAILED:
             *timeoutP = 1;
             break;
 
         case STATE_REG_UPDATE_NEEDED:
-            prv_updateRegistration(contextP, targetP, false);
+            prv_updateRegistration(contextP, targetP);
             break;
 
         case STATE_REG_FULL_UPDATE_NEEDED:
-            prv_updateRegistration(contextP, targetP, true);
+            prv_updateRegistration(contextP, targetP);
             break;
 
         case STATE_REG_FAILED:

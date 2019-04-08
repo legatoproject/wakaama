@@ -54,11 +54,6 @@
 #include <string.h>
 #include <ctype.h>
 
-#if SIERRA
-#include <lwm2mcore/lwm2mcore.h>
-#include <lwm2mcore/coapHandlers.h>
-#endif
-
 static int prv_parseNumber(uint8_t * uriString,
                             size_t uriLength,
                             size_t * headP)

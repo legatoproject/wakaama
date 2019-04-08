@@ -61,6 +61,9 @@
 #include <stddef.h>
 #ifdef SIERRA
 #include <platform/types.h>
+#ifdef USE_SFP_LOGGER
+#include <sfplogger/sfplogger.h>
+#endif
 #else
 #include <stdbool.h>
 #endif
@@ -68,6 +71,17 @@
 
 #ifdef LWM2M_WITH_LOGS
 #include <inttypes.h>
+#ifdef USE_SFP_LOGGER
+#define LOG(STR)          sfp_log_formatted(SFPLOG_USER, SFPLOG_DEBUG, (STR))
+#define LOG_ARG(FMT, ...) sfp_log_formatted(SFPLOG_USER, SFPLOG_DEBUG, (FMT), __VA_ARGS__)
+#define LOG_URI(URI)      sfp_log_formatted(SFPLOG_USER, SFPLOG_DEBUG,  \
+                                            "/%d/%d/%d",                \
+                                            ((URI)?(URI)->objectId:-1), \
+                                            (((URI) && LWM2M_URI_IS_SET_RESOURCE(URI))? \
+                                             (URI)->instanceId:-1),     \
+                                            (((URI) && LWM2M_URI_IS_SET_INSTANCE(URI))? \
+                                             (URI)->resourceId:-1))
+#else
 #define LOG(STR) lwm2m_printf("[%s:%d] " STR "\r\n", __func__ , __LINE__)
 #define LOG_ARG(FMT, ...) lwm2m_printf("[%s:%d] " FMT "\r\n", __func__ , __LINE__ , __VA_ARGS__)
 #if SIERRA
@@ -109,6 +123,7 @@
     }                                                                               \
 }
 #endif /* !SIERRA */
+#endif /* USE_LWM2M_LOGGER */
 #define STR_STATUS(S)                                           \
 ((S) == STATE_DEREGISTERED ? "STATE_DEREGISTERED" :             \
 ((S) == STATE_REG_PENDING ? "STATE_REG_PENDING" :               \
@@ -333,7 +348,7 @@ lwm2m_observed_t * observe_findByUri(lwm2m_context_t * contextP, lwm2m_uri_t * u
 
 // defined in registration.c
 uint8_t registration_handleRequest(lwm2m_context_t * contextP, lwm2m_uri_t * uriP, void * fromSessionH, coap_packet_t * message, coap_packet_t * response);
-void registration_deregister(lwm2m_context_t * contextP, lwm2m_server_t * serverP);
+bool registration_deregister(lwm2m_context_t * contextP, lwm2m_server_t * serverP);
 void registration_freeClient(lwm2m_client_t * clientP);
 uint8_t registration_start(lwm2m_context_t * contextP);
 void registration_step(lwm2m_context_t * contextP, time_t currentTime, time_t * timeoutP);
@@ -395,6 +410,11 @@ void acl_erase(lwm2m_context_t * contextP);
 void acl_free(lwm2m_context_t * contextP);
 
 #ifdef SIERRA
+
+#include <lwm2mcore/lwm2mcore.h>
+
+bool IsCoapUri(multi_option_t *uriPath);
+
 // defined in block1-stream.c
 uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
                                    coap_packet_t * message,
@@ -408,6 +428,9 @@ void coap_end_block1_stream(lwm2m_block1_data_t ** pBlock1Data,
 // defined in block2-stream.c
 coap_status_t coap_block2_stream_handler(coap_packet_t * message,
                                          coap_packet_t * response);
+
+void coap_block2_handle_response(coap_packet_t* response,
+                                 lwm2mcore_StreamStatus_t streamStatus);
 
 void coap_end_block2_stream();
 #endif

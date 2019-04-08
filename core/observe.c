@@ -347,9 +347,9 @@ uint8_t observe_setParameters(lwm2m_context_t * contextP,
     if ((((attrP->toSet | (watcherP->parameters?watcherP->parameters->toSet:0)) & ~attrP->toClear)
          & ATTR_FLAG_NUMERIC) == ATTR_FLAG_NUMERIC)
     {
-        float gt;
-        float lt;
-        float stp;
+        float gt = 0;
+        float lt = 0;
+        float stp = 0;
 
         if (0 != (attrP->toSet & LWM2M_ATTR_FLAG_GREATER_THAN))
         {
@@ -1059,7 +1059,7 @@ int lwm2m_observe_cancel(lwm2m_context_t * contextP,
 bool observe_handleNotify(lwm2m_context_t * contextP,
                            void * fromSessionH,
                            coap_packet_t * message,
-        				   coap_packet_t * response)
+                           coap_packet_t * response)
 {
     uint8_t * tokenP;
     int token_len;

@@ -180,7 +180,7 @@ static bool IsExternalCoapHandler
     return false;
 }
 
-static bool IsCoapUri
+bool IsCoapUri
 (
     multi_option_t *uriPath
 )
@@ -958,39 +958,40 @@ bool prv_send_response(lwm2m_context_t * contextP,
                        lwm2mcore_StreamStatus_t streamStatus
                        )
 {
-    async_state_t * async_stateP = &current_async_state;
-    static coap_packet_t response[1];
+    static coap_packet_t response;
+    coap_packet_t* reponsePtr = &response;
+
 
     /* initialize the response */
-    coap_init_message(response, COAP_TYPE_ACK, code, mid);
+    coap_init_message(reponsePtr, COAP_TYPE_ACK, code, mid);
 
     /* copy token */
     if (token_len)
     {
-        coap_set_header_token(response, token, token_len);
+        coap_set_header_token(reponsePtr, token, token_len);
     }
 
     /* set uri */
-    coap_set_header_uri_path(response, server->location);
+    coap_set_header_uri_path(reponsePtr, server->location);
 
     /* set the payload type & payload */
     if (payload != NULL)
     {
-        coap_set_header_content_type(response, content_type);
-        coap_set_payload(response, payload, MIN(payload_len, REST_MAX_CHUNK_SIZE));
-        coap_block2_handle_response(response, streamStatus);
+        coap_set_header_content_type(reponsePtr, content_type);
+        coap_set_payload(reponsePtr, payload, MIN(payload_len, REST_MAX_CHUNK_SIZE));
+        coap_block2_handle_response(reponsePtr, streamStatus);
     }
 
-    LOG_ARG("Response code = %d", response->code);
-    LOG_ARG("Payload length = %d", response->payload_len);
+    LOG_ARG("Response code = %d", reponsePtr->code);
+    LOG_ARG("Payload length = %d", reponsePtr->payload_len);
     LOG_ARG("Block transfer %u/%u/%u @ %u bytes",
-                                response->block2_num,
-                                response->block2_more,
-                                response->block2_size,
-                                response->block2_offset);
+                                reponsePtr->block2_num,
+                                reponsePtr->block2_more,
+                                reponsePtr->block2_size,
+                                reponsePtr->block2_offset);
 
     /* send the message */
-    message_send(contextP, &response, server->sessionH);
+    message_send(contextP, reponsePtr, server->sessionH);
 
     return true;
 }
@@ -1090,7 +1091,7 @@ bool prv_send_notification(lwm2m_context_t * contextP,
         return false;
     }
 
-    transaction = prv_init_notification(contextP, serverP, content_type, uri, token, token_len);
+    transaction = prv_init_notification(contextP, serverP, content_type, (char*)uri, token, token_len);
 
     if (transaction == NULL)
     {
@@ -1207,7 +1208,7 @@ bool lwm2m_send_response(lwm2m_context_t * contextP,
                          uint16_t content_type,
                          uint8_t * payload,
                          size_t payload_len,
-                         lwm2mcore_StreamStatus_t streamStatus)
+                         uint32_t streamStatus)
 {
     lwm2m_server_t * targetP = GetRegisteredServer(contextP, shortServerId);
 
@@ -1222,7 +1223,7 @@ bool lwm2m_send_response(lwm2m_context_t * contextP,
                                  content_type,
                                  payload,
                                  payload_len,
-                                 streamStatus);
+                                 (lwm2mcore_StreamStatus_t)streamStatus);
     }
     else
     {
@@ -1259,7 +1260,7 @@ bool lwm2m_send_notification(lwm2m_context_t * contextP,
                              uint16_t content_type,
                              uint8_t * payload,
                              size_t payload_len,
-                             lwm2mcore_StreamStatus_t streamStatus)
+                             uint32_t streamStatus)
 {
     lwm2m_server_t * targetP = GetRegisteredServer(contextP, shortServerId);
 
@@ -1273,7 +1274,7 @@ bool lwm2m_send_notification(lwm2m_context_t * contextP,
                                      content_type,
                                      payload,
                                      payload_len,
-                                     streamStatus);
+                                     (lwm2mcore_StreamStatus_t)streamStatus);
     }
     else
     {

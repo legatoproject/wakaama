@@ -390,8 +390,8 @@ void acl_free(lwm2m_context_t * contextP)
     {
         while (targetPtr->instanceList)
         {
-            acl_ctrl_oi_t * accCtrlOiP = targetPtr->instanceList;
-            targetPtr->instanceList = accCtrlOiP->nextP;
+            acl_ctrl_oi_t * accCtrlOiP = (acl_ctrl_oi_t*)targetPtr->instanceList;
+            targetPtr->instanceList = (lwm2m_list_t *)accCtrlOiP->nextP;
             lwm2m_free(accCtrlOiP);
         }
     }
@@ -406,16 +406,13 @@ void acl_free(lwm2m_context_t * contextP)
  */
 bool acl_deleteRelatedObjectInstance(lwm2m_context_t * contextP, uint16_t oid, uint16_t oiid)
 {
-    bool result = false;
     lwm2m_object_t * objectP = (lwm2m_object_t*)LWM2M_LIST_FIND(contextP->objectList,
                                                                 LWM2M_ACL_OBJECT_ID);
     LOG_ARG("Delete ACL oid for /%d/%d", oid, oiid);
     if (objectP != NULL)
     {
         // Object 2 is registered
-        uint16_t instanceId;
         acl_ctrl_oi_t * accCtrlOiP;
-        acl_ctrl_ri_t * accCtrlRiP;
 
         accCtrlOiP = (acl_ctrl_oi_t *)(objectP->instanceList);
 
@@ -510,7 +507,7 @@ void acl_erase(lwm2m_context_t * contextP)
         return;
     }
 
-    accCtrlOiP = objectP->instanceList;
+    accCtrlOiP = (acl_ctrl_oi_t *)objectP->instanceList;
     while (accCtrlOiP)
     {
         lwm2m_free(accCtrlOiP->accCtrlValListP);

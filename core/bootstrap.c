@@ -223,7 +223,7 @@ uint8_t bootstrap_handleFinish(lwm2m_context_t * context,
             bootstrapServer->status = STATE_BS_FINISHING;
 #if SIERRA
             /* Notify that the bootstrap is finishing */
-            smanager_SendSessionEvent(EVENT_TYPE_BOOTSTRAP, EVENT_STATUS_FINISHING);
+            smanager_SendSessionEvent(EVENT_TYPE_BOOTSTRAP, EVENT_STATUS_FINISHING, NULL);
 #endif
             return COAP_204_CHANGED;
         }

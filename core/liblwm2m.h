@@ -235,8 +235,17 @@ uint8_t lwm2m_report_coap_status(const char *filePath, const char *func, int cod
 #define LWM2M_ACL_C_RIGHTS              16
 #define LWM2M_ACL_OWNER_BOOTSTRAP       0xFFFF
 
+/*
+ * Define values for registration update
+ */
+#define LWM2M_REG_UPDATE_NONE           0
+#define LWM2M_REG_UPDATE_LIFETIME       1
+#define LWM2M_REG_UPDATE_BINDING_MODE   2
+#define LWM2M_REG_UPDATE_SMS_NUMBER     4
+#define LWM2M_REG_UPDATE_OBJECT_LIST    8
 
 #if SIERRA
+
 /*
  * Enum definition for LwM2M push callback
  */
@@ -474,6 +483,7 @@ typedef enum
     STATE_REG_PENDING,             // registration pending
     STATE_REGISTERED,              // successfully registered
     STATE_REG_FAILED,              // last registration failed
+    STATE_REG_UPDATE_FAILED,       // last registration update failed
     STATE_REG_UPDATE_PENDING,      // registration update pending
     STATE_REG_UPDATE_NEEDED,       // registration update required
     STATE_REG_FULL_UPDATE_NEEDED,  // registration update with objects required
@@ -525,6 +535,7 @@ typedef struct _lwm2m_server_
     lwm2m_status_t          status;
     char *                  location;
     bool                    dirty;
+    uint8_t                 regUpdateOptions; // bitmap of parameters to be sent in a registration update message
     lwm2m_block1_data_t *   block1Data;   // buffer to handle block1 data, should be replace by a list to support several block1 transfer by server.
 } lwm2m_server_t;
 
@@ -728,7 +739,8 @@ typedef struct
 // initialize a liblwm2m context.
 lwm2m_context_t * lwm2m_init(void * userData);
 // close a liblwm2m context.
-void lwm2m_close(lwm2m_context_t * contextP);
+bool lwm2m_close(lwm2m_context_t * contextP);
+void lwm2m_followClosure(lwm2m_context_t * contextP);
 
 // perform any required pending operation and adjust timeoutP to the maximal time interval to wait in seconds.
 int lwm2m_step(lwm2m_context_t * contextP, time_t * timeoutP);
@@ -747,7 +759,7 @@ int lwm2m_remove_object(lwm2m_context_t * contextP, uint16_t id);
 // send a registration update to the server specified by the server short identifier
 // or all if the ID is 0.
 // If withObjects is true, the registration update contains the object list.
-int lwm2m_update_registration(lwm2m_context_t * contextP, uint16_t shortServerID, bool withObjects);
+int lwm2m_update_registration(lwm2m_context_t * contextP, uint16_t shortServerID, uint8_t regUpdateOptions);
 
 void lwm2m_resource_value_changed(lwm2m_context_t * contextP, lwm2m_uri_t * uriP);
 

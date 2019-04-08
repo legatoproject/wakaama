@@ -926,6 +926,7 @@ int object_getServers(lwm2m_context_t * contextP, bool checkOnly)
                         lwm2m_free(targetP->location);
                         targetP->location = lwm2m_strdup(registrationID);
                         targetP->status = STATE_REG_FULL_UPDATE_NEEDED;
+                        targetP->regUpdateOptions = LWM2M_REG_UPDATE_LIFETIME;
                     }
                     else
                     {

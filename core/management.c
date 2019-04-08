@@ -355,7 +355,7 @@ uint8_t dm_handleRequest(lwm2m_context_t * contextP,
                         lwm2m_data_free(1, dataP);
                     }
 
-                    lwm2m_update_registration(contextP, 0, true);
+                    lwm2m_update_registration(contextP, 0, LWM2M_REG_UPDATE_OBJECT_LIST);
                 }
             }
             else if (!LWM2M_URI_IS_SET_RESOURCE(uriP))
@@ -422,7 +422,7 @@ uint8_t dm_handleRequest(lwm2m_context_t * contextP,
                         }
                     }
 
-                    lwm2m_update_registration(contextP, 0, true);
+                    lwm2m_update_registration(contextP, 0, LWM2M_REG_UPDATE_OBJECT_LIST);
                 }
             }
         }

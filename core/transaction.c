@@ -301,6 +301,12 @@ bool transaction_handleResponse(lwm2m_context_t * contextP,
 
             if (reset || prv_checkFinished(transacP, message))
             {
+#ifdef LWM2M_DEREGISTER
+                lwm2m_server_t *serverList;
+                lwm2m_server_t *bootstrapServerList;
+                bool isAllDeregistered = true;
+#endif
+
                 // HACK: If a message is sent from the monitor callback,
                 // it will arrive before the registration ACK.
                 // So we resend transaction that were denied for authentication reason.
@@ -324,6 +330,42 @@ bool transaction_handleResponse(lwm2m_context_t * contextP,
                     transacP->callback(transacP, message);
                 }
                 transaction_remove(contextP, transacP);
+
+#ifdef LWM2M_DEREGISTER
+                serverList = contextP->serverList;
+                bootstrapServerList = contextP->bootstrapServerList;
+                LOG("Check if servers are deregistered");
+                if (!serverList)
+                {
+                    isAllDeregistered = false;
+                }
+
+                while(serverList)
+                {
+                    if (serverList->status != STATE_DEREGISTERED)
+                    {
+                        isAllDeregistered = false;
+                    }
+                    else
+                    {
+                        // Check if the client is connected to the BS
+                        if ((bootstrapServerList)
+                         && (STATE_BS_PENDING == bootstrapServerList->status))
+                        {
+                            LOG("Bootstrap pending");
+                            isAllDeregistered = false;
+                        }
+                    }
+                    serverList = serverList->next;
+                }
+                if (isAllDeregistered)
+                {
+                    LOG("All servers are deregistered");
+                    lwm2m_followClosure(contextP);
+                }
+#endif
+
+
                 return true;
             }
             // if we found our guy, exit
