@@ -222,3 +222,17 @@ void lwm2mcore_DeleteRegistrationID
 {
     (void) shortID;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub for the function that executes a previously added post LWM2M request handler for the
+ * request that has just been processed and responded to
+ */
+//--------------------------------------------------------------------------------------------------
+void lwm2mcore_ExecPostRequestHandler
+(
+    void* connP
+)
+{
+    return;
+}

@@ -767,6 +767,10 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                     coap_error_code = message_send(contextP, response, fromSessionH);
                 }
             }
+
+#if SIERRA
+            lwm2mcore_ExecPostRequestHandler(fromSessionH);
+#endif
         }
         else
         {
