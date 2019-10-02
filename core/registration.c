@@ -694,6 +694,8 @@ int lwm2m_update_registration(lwm2m_context_t * contextP,
     }
     while (targetP != NULL && result == COAP_NO_ERROR)
     {
+        targetP->regUpdateOptions = LWM2M_REG_UPDATE_NONE;
+
         if (shortServerID != 0)
         {
             if (targetP->shortID == shortServerID)
@@ -705,23 +707,23 @@ int lwm2m_update_registration(lwm2m_context_t * contextP,
                     if (regUpdateOptions)
                     {
                         targetP->status = STATE_REG_FULL_UPDATE_NEEDED;
+                        targetP->regUpdateOptions = regUpdateOptions;
                     }
                     else
                     {
                         targetP->status = STATE_REG_UPDATE_NEEDED;
                     }
-                    targetP->regUpdateOptions |= regUpdateOptions;
                     return COAP_NO_ERROR;
                 }
                 else if ((targetP->status == STATE_REG_FULL_UPDATE_NEEDED)
                       || (targetP->status == STATE_REG_UPDATE_NEEDED))
                 {
                     // if REG (FULL) UPDATE is already set, returns COAP_NO_ERROR
-                    if (regUpdateOptions == true)
+                    if (regUpdateOptions)
                     {
                         targetP->status = STATE_REG_FULL_UPDATE_NEEDED;
+                        targetP->regUpdateOptions = regUpdateOptions;
                     }
-                    targetP->regUpdateOptions |= regUpdateOptions;
                     return COAP_NO_ERROR;
                 }
                 else
@@ -735,15 +737,15 @@ int lwm2m_update_registration(lwm2m_context_t * contextP,
             if (targetP->status == STATE_REGISTERED
              || targetP->status == STATE_REG_UPDATE_PENDING)
             {
-                if (regUpdateOptions == true)
+                if (regUpdateOptions)
                 {
                     targetP->status = STATE_REG_FULL_UPDATE_NEEDED;
+                    targetP->regUpdateOptions = regUpdateOptions;
                 }
                 else
                 {
                     targetP->status = STATE_REG_UPDATE_NEEDED;
                 }
-                targetP->regUpdateOptions |= regUpdateOptions;
             }
         }
         targetP = targetP->next;
