@@ -842,7 +842,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                         transacP = transacP->next;
                     }
 
-                    transaction = prv_init_push_transaction(push_stateP->contextP, push_stateP->serverP, push_stateP->content_type);
+                    transaction = prv_init_push_transaction(push_stateP->contextP, push_stateP->serverP, (lwm2m_media_type_t)push_stateP->content_type);
                     if (transaction == NULL) return;
 
                     block1_resp = transaction->message;
@@ -1095,7 +1095,7 @@ bool prv_send_notification(lwm2m_context_t * contextP,
         return false;
     }
 
-    transaction = prv_init_notification(contextP, serverP, content_type, (char*)uri, token, token_len);
+    transaction = prv_init_notification(contextP, serverP, (lwm2m_media_type_t)content_type, (char*)uri, token, token_len);
 
     if (transaction == NULL)
     {

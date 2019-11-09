@@ -41,7 +41,7 @@ coap_status_t coap_block2_stream_handler(coap_packet_t* message,
     uint32_t blockNum;
     bool blockMore;
 
-    coap_status_t rc = COAP_IGNORE;
+    uint8_t rc = COAP_IGNORE;
 
     // parse block2 header
     coap_get_header_block2(message, (uint32_t*)&blockNum, (uint8_t*)&blockMore, &blockSize, NULL);
@@ -69,7 +69,7 @@ coap_status_t coap_block2_stream_handler(coap_packet_t* message,
                 LOG_ARG("Unexpected block size %d, expected block size %d", blockSize, MAX_BLOCK2_SIZE);
                 lwm2mcore_CallCoapExternalHandler(message, LWM2MCORE_TX_STREAM_ERROR);
                 coap_end_block2_stream();
-                return COAP_500_INTERNAL_SERVER_ERROR;
+                return (coap_status_t)COAP_500_INTERNAL_SERVER_ERROR;
             }
 
             // Check if this is a retransmission request
@@ -90,14 +90,14 @@ coap_status_t coap_block2_stream_handler(coap_packet_t* message,
                                             response->block2_size,
                                             response->block2_offset);
 
-                return response->code;
+                return (coap_status_t)response->code;
             }
             else if (blockNum != blk2_ctxt.expBlock2Num)
             {
                 LOG_ARG("Unexpected block number %d, expected block num %d", blockNum, blk2_ctxt.expBlock2Num);
                 lwm2mcore_CallCoapExternalHandler(message, LWM2MCORE_TX_STREAM_ERROR);
                 coap_end_block2_stream();
-                return COAP_500_INTERNAL_SERVER_ERROR;
+                return (coap_status_t)COAP_500_INTERNAL_SERVER_ERROR;
             }
 
             blk2_ctxt.lastBlock2Mid = message->mid;
@@ -111,7 +111,7 @@ coap_status_t coap_block2_stream_handler(coap_packet_t* message,
             break;
     }
 
-    return rc;
+    return (coap_status_t)rc;
 }
 
 void coap_block2_handle_response(coap_packet_t* response,

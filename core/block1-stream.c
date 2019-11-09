@@ -177,7 +177,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
 
     if (blockMore)
     {
-        *outputLength = -1;
+        *outputLength = (size_t)-1;
 
         // Send the status event.
         lwm2mcore_CallCoapExternalHandler(message, LWM2MCORE_RX_STREAM_IN_PROGRESS);

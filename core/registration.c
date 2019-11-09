@@ -201,10 +201,12 @@ static void prv_handleRegistrationReply(lwm2m_transaction_t * transacP,
     if (targetP->status == STATE_REG_PENDING)
     {
         time_t tv_sec = lwm2m_gettime();
-        if (tv_sec >= 0)
+
+        if ((int32_t)tv_sec >= 0)
         {
             targetP->registration = tv_sec;
         }
+
         if (packet != NULL && packet->code == COAP_201_CREATED)
         {
             targetP->status = STATE_REGISTERED;
@@ -327,10 +329,12 @@ static void prv_handleRegistrationUpdateReply(lwm2m_transaction_t * transacP,
     if (targetP->status == STATE_REG_UPDATE_PENDING)
     {
         time_t tv_sec = lwm2m_gettime();
-        if (tv_sec >= 0)
+
+        if ((int32_t)tv_sec >= 0)
         {
             targetP->registration = tv_sec;
         }
+
         if (packet != NULL && packet->code == COAP_204_CHANGED)
         {
             targetP->status = STATE_REGISTERED;

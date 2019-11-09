@@ -462,10 +462,12 @@ int lwm2m_step(lwm2m_context_t * contextP,
 
     LOG_ARG("timeoutP: %" PRId64, *timeoutP);
     tv_sec = lwm2m_gettime();
-    if (tv_sec < 0)
+
+    if ((int32_t)tv_sec < 0)
     {
         return COAP_500_INTERNAL_SERVER_ERROR;
     }
+
 
 #ifdef LWM2M_CLIENT_MODE
     LOG_ARG("State: %s", STR_STATE(contextP->state));
@@ -492,7 +494,6 @@ next_step:
         LOG_ARG ("STATE_INITIAL -> %s", STR_STATE(contextP->state));
 #endif
         goto next_step;
-        break;
 
     case STATE_BOOTSTRAP_REQUIRED:
 #ifdef LWM2M_BOOTSTRAP
@@ -534,7 +535,6 @@ next_step:
             LOG_ARG ("STATE_BOOTSTRAPPING -> %s", STR_STATE(contextP->state));
 #endif
             goto next_step;
-            break;
 
         case STATE_BS_FAILED:
 #if SIERRA
@@ -588,7 +588,6 @@ next_step:
         case STATE_REG_UPDATE_FAILED:
             contextP->state = STATE_INITIAL;
             goto next_step;
-            break;
 #endif
 
         case STATE_REG_FAILED:
@@ -603,7 +602,6 @@ next_step:
             LOG_ARG ("STATE_REG_FAILED -> %s", STR_STATE(contextP->state));
 #endif
             goto next_step;
-            break;
 
         case STATE_REG_PENDING:
         default:
@@ -624,7 +622,6 @@ next_step:
                 LOG_ARG ("STATE_READY -> %s", STR_STATE(contextP->state));
 #endif
                 goto next_step;
-                break;
             }
 #if SIERRA
             /* This case happens when an UPDATE request is rejected by the server due to a lifetime
@@ -634,7 +631,6 @@ next_step:
             {
                 contextP->state = STATE_INITIAL;
                 goto next_step;
-                break;
             }
 #endif
         }

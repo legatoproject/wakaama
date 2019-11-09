@@ -186,7 +186,7 @@ uint8_t observe_handleRequest(lwm2m_context_t * contextP,
         watcherP->lastMid = response->mid;
         if (IS_OPTION(message, COAP_OPTION_ACCEPT))
         {
-            watcherP->format = utils_convertMediaType(message->accept[0]);
+            watcherP->format = utils_convertMediaType((coap_content_type_t)message->accept[0]);
         }
         else
         {

@@ -372,10 +372,12 @@ bool transaction_handleResponse(lwm2m_context_t * contextP,
             if (found)
             {
                 time_t tv_sec = lwm2m_gettime();
-                if (0 <= tv_sec)
+
+                if (0 <= (int32_t)tv_sec)
                 {
                     transacP->retrans_time = tv_sec;
                 }
+
                 if (transacP->response_timeout)
                 {
                     transacP->retrans_time += transacP->response_timeout;
@@ -432,7 +434,8 @@ int transaction_send(lwm2m_context_t * contextP,
         if (0 == transacP->retrans_counter)
         {
             time_t tv_sec = lwm2m_gettime();
-            if (0 <= tv_sec)
+
+            if (0 <= (int32_t)tv_sec)
             {
                 transacP->retrans_time = tv_sec + COAP_RESPONSE_TIMEOUT;
                 transacP->retrans_counter = 1;

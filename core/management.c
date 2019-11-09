@@ -221,7 +221,7 @@ uint8_t dm_handleRequest(lwm2m_context_t * contextP,
                     {
                         if (IS_OPTION(message, COAP_OPTION_ACCEPT))
                         {
-                            format = utils_convertMediaType(message->accept[0]);
+                            format = utils_convertMediaType((coap_content_type_t)message->accept[0]);
                         }
                         else
                         {
@@ -253,7 +253,7 @@ uint8_t dm_handleRequest(lwm2m_context_t * contextP,
             {
                 if (IS_OPTION(message, COAP_OPTION_ACCEPT))
                 {
-                    format = utils_convertMediaType(message->accept[0]);
+                    format = utils_convertMediaType((coap_content_type_t)message->accept[0]);
                 }
 
                 result = object_read(contextP, uriP, &format, &buffer, &length);

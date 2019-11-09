@@ -432,7 +432,7 @@ coap_status_t coap_block2_stream_handler(coap_packet_t * message,
 void coap_block2_handle_response(coap_packet_t* response,
                                  lwm2mcore_StreamStatus_t streamStatus);
 
-void coap_end_block2_stream();
+void coap_end_block2_stream(void);
 #endif
 
 #endif
