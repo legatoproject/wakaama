@@ -169,6 +169,7 @@ uint8_t lwm2m_report_coap_status(const char *filePath, const char *func, int cod
 #define COAP_500_INTERNAL_SERVER_ERROR  COAP(0xA0)
 #define COAP_501_NOT_IMPLEMENTED        COAP(0xA1)
 #define COAP_503_SERVICE_UNAVAILABLE    COAP(0xA3)
+#define COAP_505_PROXYING_NOT_SUPPORTED COAP(0xA5)
 
 /*
  * Standard Object IDs
@@ -521,6 +522,8 @@ struct _lwm2m_block1_data_
     uint8_t *             block1buffer;     // data buffer
     size_t                block1bufferSize; // buffer size
     uint16_t              lastmid;          // mid of the last message received
+    uint32_t              block1Num;        // block1 number
+    uint16_t              block1Size;        // block1 size
 };
 
 typedef struct _lwm2m_server_
@@ -797,7 +800,8 @@ bool lwm2m_send_response(lwm2m_context_t * contextP,
                          uint16_t content_type,
                          uint8_t * payload,
                          size_t payload_len,
-                         uint32_t streamStatus);
+                         uint32_t streamStatus,
+                         uint16_t blockSize);
 
 bool lwm2m_send_notification(lwm2m_context_t * contextP,
                              uint16_t shortServerId,
