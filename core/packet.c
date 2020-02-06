@@ -642,6 +642,24 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                     if (IsExternalCoapHandler() && IsCoapUri(message->uri_path))
                     {
                         coap_error_code = coap_block1_stream_handler(&serverP->block1Data, message, &complete_buffer, &complete_buffer_size);
+                        if (serverP->block1Data)
+                        {
+                            serverP->block1Data->block1Num = block1_num;
+                            serverP->block1Data->block1Size = block1_size;
+                        }
+
+                        if (MANUAL_RESPONSE == coap_error_code)
+                        {
+                            // Send ack to avoid retransmission
+                            bool isAckSent= lwm2m_send_empty_response(contextP,
+                                                                      serverP->shortID,
+                                                                      message->mid);
+                            if (false == isAckSent)
+                            {
+                                LOG("ACK was not successfully sent");
+                            }
+                            return;
+                        }
                     }
                     else
 #endif
@@ -959,12 +977,13 @@ bool prv_send_response(lwm2m_context_t * contextP,
                        uint16_t content_type,
                        uint8_t * payload,
                        size_t payload_len,
-                       lwm2mcore_StreamStatus_t streamStatus
+                       lwm2mcore_StreamStatus_t streamStatus,
+                       uint16_t blockSize
                        )
 {
     static coap_packet_t response;
     coap_packet_t* reponsePtr = &response;
-
+    uint16_t block1_size;
 
     /* initialize the response */
     coap_init_message(reponsePtr, COAP_TYPE_ACK, code, mid);
@@ -978,6 +997,68 @@ bool prv_send_response(lwm2m_context_t * contextP,
     /* set uri */
     coap_set_header_uri_path(reponsePtr, server->location);
 
+    if (code == COAP_231_CONTINUE)
+    {
+        bool isMore = false;
+
+        if(server->block1Data)
+        {
+            /* block size negociation */
+            if(server->block1Data->block1Size != blockSize)
+            {
+                LOG("Block1 size negociation");
+                if (server->block1Data->block1Size < blockSize)
+                {
+                    LOG("Error, requested block size is greater than previous one");
+                    block1_size = MIN(blockSize, REST_MAX_CHUNK_SIZE);
+                }
+                else
+                {
+                    LOG("Calculate new block1Num");
+                    server->block1Data->block1Num = server->block1Data->block1Size/blockSize - 1;
+                    block1_size = blockSize;
+                }
+            }
+            else
+            {
+                block1_size = MIN(blockSize, REST_MAX_CHUNK_SIZE);
+            }
+
+            if (streamStatus == LWM2MCORE_RX_STREAM_IN_PROGRESS)
+            {
+                isMore = true;
+            }
+
+            if (0 == coap_set_header_block1(reponsePtr,
+                                            server->block1Data->block1Num,
+                                            isMore,
+                                            block1_size))
+            {
+                LOG("Error on coap_set_header_block1");
+            }
+        }
+    }
+    else if((COAP_204_CHANGED == code) && (server->block1Data) && (server->block1Data->block1Num))
+    {
+        block1_size = MIN(blockSize, REST_MAX_CHUNK_SIZE);
+        if (0 == coap_set_header_block1(reponsePtr,
+                                        server->block1Data->block1Num,
+                                        false,
+                                        block1_size))
+        {
+            LOG("Error on coap_set_header_block1");
+        }
+    }
+
+    if ((COAP_201_CREATED <= code)
+     && (COAP_505_PROXYING_NOT_SUPPORTED >= code)
+     && (COAP_231_CONTINUE != code)
+     && (server->block1Data))
+    {
+        // Clear block1 buffer
+        coap_end_block1_stream(&(server->block1Data), NULL, 0);
+    }
+
     /* set the payload type & payload */
     if (payload != NULL)
     {
@@ -988,11 +1069,16 @@ bool prv_send_response(lwm2m_context_t * contextP,
 
     LOG_ARG("Response code = %d", reponsePtr->code);
     LOG_ARG("Payload length = %d", reponsePtr->payload_len);
-    LOG_ARG("Block transfer %u/%u/%u @ %u bytes",
+    LOG_ARG("Block2 transfer %u/%u/%u @ %u bytes",
                                 reponsePtr->block2_num,
                                 reponsePtr->block2_more,
                                 reponsePtr->block2_size,
                                 reponsePtr->block2_offset);
+    LOG_ARG("Block1 transfer %u/%u/%u @ %u bytes",
+                                reponsePtr->block1_num,
+                                reponsePtr->block1_more,
+                                reponsePtr->block1_size,
+                                reponsePtr->block1_offset);
 
     /* send the message */
     message_send(contextP, reponsePtr, server->sessionH);
@@ -1212,7 +1298,8 @@ bool lwm2m_send_response(lwm2m_context_t * contextP,
                          uint16_t content_type,
                          uint8_t * payload,
                          size_t payload_len,
-                         uint32_t streamStatus)
+                         uint32_t streamStatus,
+                         uint16_t blockSize)
 {
     lwm2m_server_t * targetP = GetRegisteredServer(contextP, shortServerId);
 
@@ -1227,7 +1314,8 @@ bool lwm2m_send_response(lwm2m_context_t * contextP,
                                  content_type,
                                  payload,
                                  payload_len,
-                                 (lwm2mcore_StreamStatus_t)streamStatus);
+                                 (lwm2mcore_StreamStatus_t)streamStatus,
+                                 blockSize);
     }
     else
     {

@@ -76,7 +76,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
         }
 
         // Actual response will be sent by app
-        return COAP_IGNORE;
+        return MANUAL_RESPONSE;
     }
 
     if (pBlock1Data != NULL)
@@ -108,7 +108,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
         if (block1Data != NULL)
         {
             // If this is a retransmission, we already did that.
-            if ((message->mid == block1Data->lastmid + 1) && (message->mid != 0))
+            if ((message->mid > block1Data->lastmid) && (message->mid != 0))
             {
                 lwm2m_free(block1Data->block1buffer);
             }
@@ -135,6 +135,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
 
         block1Data->block1buffer = lwm2m_malloc(MAX_BLOCK1_SIZE);
         block1Data->block1bufferSize = message->payload_len;
+        block1Data->block1Num = blockNum;
 
         // write new block in buffer
         memcpy(block1Data->block1buffer, message->payload, message->payload_len);
@@ -153,7 +154,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
         }
 
         // If this is a retransmission, we already did that.
-        if ((message->mid == block1Data->lastmid + 1) && (message->mid != 0))
+        if ((message->mid > block1Data->lastmid) && (message->mid != 0))
         {
            if (block1Data->block1bufferSize != blockSize * blockNum)
            {
@@ -167,6 +168,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
            block1Data->block1bufferSize += message->payload_len;
            memcpy(block1Data->block1buffer, message->payload, message->payload_len);
            block1Data->lastmid = message->mid;
+           block1Data->block1Num = blockNum;
         }
         else
         {
@@ -182,7 +184,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
         // Send the status event.
         lwm2mcore_CallCoapExternalHandler(message, LWM2MCORE_RX_STREAM_IN_PROGRESS);
 
-        return COAP_231_CONTINUE;
+        return MANUAL_RESPONSE;
     }
     else
     {
@@ -190,14 +192,11 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
         *outputBuffer = block1Data->block1buffer;
         LOG_ARG("Total buffer size received = %d", block1Data->block1bufferSize);
 
-        // Clear block1 buffer
-        coap_end_block1_stream(pBlock1Data, NULL, 0);
-
         // Send the status event.
         lwm2mcore_CallCoapExternalHandler(message, LWM2MCORE_RX_STREAM_END);
 
         // Actual response will be sent by app
-        return COAP_IGNORE;
+        return MANUAL_RESPONSE;
     }
 }
 #endif
