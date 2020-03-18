@@ -559,7 +559,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
     static coap_packet_t message[1];
     static coap_packet_t response[1];
     uint16_t payload_length;
-    uint8_t* payloadP;
+    uint8_t* payloadP = NULL;
     uint32_t block1_num;
     uint8_t  block1_more;
     uint16_t block1_size;
@@ -692,7 +692,8 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 /* Save original payload pointer for later freeing. Payload in response may be updated. */
                 uint8_t *payload = response->payload;
 #if SIERRA
-                bool can_free_payload = (response->payload != NULL && (&current_async_state)->bufferP != response->payload);
+                bool can_free_payload = ((response->payload != NULL)
+                                     && ((&current_async_state)->bufferP != response->payload));
 #endif
                 if ( IS_OPTION(message, COAP_OPTION_BLOCK2) )
                 {
@@ -709,7 +710,10 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                         }
                         else
                         {
-                            coap_set_header_block2(response, block_num, response->payload_len - block_offset > block_size, block_size);
+                            coap_set_header_block2(response,
+                                                   block_num,
+                                                   (response->payload_len - block_offset) > block_size,
+                                                   block_size);
                             payload_length = MIN(response->payload_len - block_offset, block_size);
                             payloadP = (uint8_t *)lwm2m_malloc(payload_length);
 
@@ -727,15 +731,18 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                     {
                         /* resource provides chunk-wise data */
                         LOG_ARG("Blockwise: blockwise resource, new offset %d", (int) new_offset);
-                        coap_set_header_block2(response, block_num, new_offset!=-1 || response->payload_len > block_size, block_size);
+                        coap_set_header_block2(response,
+                                               block_num,
+                                               (new_offset!=-1) || response->payload_len > block_size,
+                                               block_size);
 
-                        if (response->payload_len > block_size)
+                        if ((response->payload_len) > block_size)
                         {
                             payloadP = (uint8_t *)lwm2m_malloc(block_size);
                             memcpy(payloadP,response->payload, block_size);
                             coap_set_payload(response, payloadP, block_size);
 
-                            if(!response->block2_more)
+                            if(!(response->block2_more))
                             {
                                 LOG("End of block2 transfer");
                                 prv_end_async();
@@ -743,7 +750,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                         }
                     } /* if (resource aware of blockwise) */
                 }
-                else if (new_offset!=0)
+                else if ((new_offset!=0) || (response->payload_len > REST_MAX_CHUNK_SIZE))
                 {
                     LOG_ARG("Blockwise: no block option for blockwise resource, using block size %u", REST_MAX_CHUNK_SIZE);
 
@@ -771,6 +778,10 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 {
 #endif
                     lwm2m_free(payload);
+                    if (payloadP)
+                    {
+                        lwm2m_free(payloadP);
+                    }
 #if SIERRA
                 }
 #endif
