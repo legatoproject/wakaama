@@ -257,11 +257,10 @@ void lwm2m_followClosure(lwm2m_context_t * contextP)
     lwm2m_end_push();
 #endif
 
-    prv_deleteTransactionList(contextP);
-    lwm2m_free(contextP);
-
     /* Notify that the connection is stopped */
     smanager_SendSessionEvent(EVENT_SESSION, EVENT_STATUS_DONE_SUCCESS, contextP);
+    prv_deleteTransactionList(contextP);
+    lwm2m_free(contextP);
 
 #endif
 

@@ -365,7 +365,7 @@ static int prv_getUpdateRegistrationQueryLength(lwm2m_context_t * contextP,
 {
     int index = 0;
     int res = 0;
-    char buffer[21];
+    uint8_t buffer[21];
     bool isStarterAdded = false;
 
     if ((((server->regUpdateOptions) & LWM2M_REG_UPDATE_LIFETIME) == LWM2M_REG_UPDATE_LIFETIME)
@@ -373,7 +373,7 @@ static int prv_getUpdateRegistrationQueryLength(lwm2m_context_t * contextP,
     {
         isStarterAdded = true;
         index += strlen(QUERY_STARTER QUERY_LIFETIME);
-        res = utils_intToText(server->lifetime, (uint8_t *)buffer, sizeof(buffer));
+        res = utils_intToText(server->lifetime, buffer, sizeof(buffer));
         LOG_ARG("res %d", res);
         if (res == 0)
         {
