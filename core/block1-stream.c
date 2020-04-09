@@ -115,7 +115,14 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
             else
             {
                 LOG("Retransmitted packet discarded");
-                return COAP_IGNORE;
+                if(message->block1_more)
+                {
+                    return COAP_231_CONTINUE;
+                }
+                else
+                {
+                    return COAP_204_CHANGED;
+                }
             }
         }
         else
@@ -173,7 +180,14 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
         else
         {
             LOG("Retransmitted packet discarded");
-            return COAP_IGNORE;
+            if(message->block1_more)
+            {
+                return COAP_231_CONTINUE;
+            }
+            else
+            {
+                return COAP_204_CHANGED;
+            }
         }
     }
 
