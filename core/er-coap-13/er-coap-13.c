@@ -839,6 +839,7 @@ coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
         if (option_number & 1)
         {
           coap_error_message = "Unsupported critical option";
+          coap_free_header(coap_pkt);
           return BAD_OPTION_4_02;
         }
     }
