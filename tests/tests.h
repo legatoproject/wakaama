@@ -34,5 +34,6 @@ CU_ErrorCode create_tlv_json_suit();
 CU_ErrorCode create_block1_suit();
 CU_ErrorCode create_block1_stream_suit();
 CU_ErrorCode create_block2_stream_suit();
+CU_ErrorCode create_coap_suit();
 
 #endif /* TESTS_H_ */

@@ -27,6 +27,7 @@ SET(SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/block1tests.c
     ${CMAKE_CURRENT_LIST_DIR}/block1streamtests.c
     ${CMAKE_CURRENT_LIST_DIR}/block2streamtests.c
+    ${CMAKE_CURRENT_LIST_DIR}/coaptests.c
     ${CMAKE_CURRENT_LIST_DIR}/convert_numbers_test.c
     ${CMAKE_CURRENT_LIST_DIR}/tlv_json_lwm2m_data_test.c
     ${CMAKE_CURRENT_LIST_DIR}/tlvtests.c
