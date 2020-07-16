@@ -71,6 +71,10 @@ int main()
        goto exit;
     }
 
+    if (CUE_SUCCESS != create_coap_suit()) {
+       goto exit;
+    }
+
    CU_basic_set_mode(CU_BRM_VERBOSE);
    CU_basic_run_tests();
 exit:

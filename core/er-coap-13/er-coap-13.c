@@ -706,6 +706,7 @@ coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
     if (current_option + option_length > data + data_len)
     {
         PRINTF("OPTION %u (delta %u, len %u) has invalid length.\n", option_number, option_delta, option_length);
+        coap_free_header(coap_pkt);
         return BAD_REQUEST_4_00;
     }
     else
@@ -805,6 +806,7 @@ coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
         /*TODO length > 270 not implemented (actually not required) */
         PRINTF("Proxy-Uri NOT IMPLEMENTED [%.*s]\n", coap_pkt->proxy_uri_len, coap_pkt->proxy_uri);
         coap_error_message = "This is a constrained server (Contiki)";
+        coap_free_header(coap_pkt);
         return PROXYING_NOT_SUPPORTED_5_05;
 
       case COAP_OPTION_OBSERVE:
