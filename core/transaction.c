@@ -141,6 +141,38 @@ static int prv_checkFinished(lwm2m_transaction_t * transacP,
     return 0;
 }
 
+static void prv_generate_token (lwm2m_transaction_t * transacP,
+                                uint16_t mID,
+                                uint8_t token_len)
+{
+    // generate a token
+    uint8_t temp_token[COAP_TOKEN_LEN];
+    time_t tv_sec = lwm2m_gettime();
+    size_t tokenLenToWrite = (size_t)token_len;
+    if (!transacP)
+    {
+        return;
+    }
+    // initialize first 6 bytes
+    temp_token[0] = mID;
+    temp_token[1] = mID >> 8;
+    temp_token[2] = tv_sec;
+    temp_token[3] = tv_sec >> 8;
+    temp_token[4] = tv_sec >> 16;
+    temp_token[5] = tv_sec >> 24;
+#if SIERRA
+    if (!tokenLenToWrite)
+    {
+        // set the 2 last bytes using a 4-bit and 20-bit shift to get a "pseudo-random" token
+        temp_token[6] = tv_sec >> 4;
+        temp_token[7] = tv_sec >> 20;
+        tokenLenToWrite = COAP_TOKEN_LEN;
+    }
+#endif
+    // use just the provided amount of bytes
+    coap_set_header_token(transacP->message, temp_token, tokenLenToWrite);
+}
+
 lwm2m_transaction_t * transaction_new(void * sessionH,
                                       coap_method_t method,
                                       char * altPath,
@@ -225,20 +257,16 @@ lwm2m_transaction_t * transaction_new(void * sessionH,
         }
         else {
             // generate a token
-            uint8_t temp_token[COAP_TOKEN_LEN];
-            time_t tv_sec = lwm2m_gettime();
-
-            // initialize first 6 bytes, leave the last 2 random
-            temp_token[0] = mID;
-            temp_token[1] = mID >> 8;
-            temp_token[2] = tv_sec;
-            temp_token[3] = tv_sec >> 8;
-            temp_token[4] = tv_sec >> 16;
-            temp_token[5] = tv_sec >> 24;
-            // use just the provided amount of bytes
-            coap_set_header_token(transacP->message, temp_token, token_len);
+            prv_generate_token(transacP, mID, token_len);
         }
     }
+#if SIERRA
+    if (0 == token_len)
+    {
+        // generate a token
+        prv_generate_token(transacP, mID, token_len);
+    }
+#endif
 
     LOG("Exiting on success");
     return transacP;
