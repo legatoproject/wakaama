@@ -139,22 +139,22 @@ static void test_block1_stream_nominal(void)
     memset(TestPayload, 0, sizeof(TestPayload));
     setup_test_message(&TestMessage, 123, COAP_TYPE_CON, 0, 1, 1024, 1024, 0);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
 
     memset(TestPayload, 1, sizeof(TestPayload));
     setup_test_message(&TestMessage, 124, COAP_TYPE_CON, 1, 1, 1024, 1024,1);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
 
     memset(TestPayload, 2, sizeof(TestPayload));
     setup_test_message(&TestMessage, 125, COAP_TYPE_CON, 2, 1, 1024, 1024, 2);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
 
     memset(TestPayload, 3, sizeof(TestPayload));
     setup_test_message(&TestMessage, 126, COAP_TYPE_CON, 3, 0, 1024, 256, 3);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
     CU_ASSERT_EQUAL(bsize, 3328);
     bool rc = CheckReceivedBytes(bsize);
     CU_ASSERT_EQUAL(rc, true);
@@ -186,62 +186,62 @@ static void test_block1_stream_retransmit(void)
     // Send block 0
     setup_test_message(&TestMessage, 123, COAP_TYPE_CON, 0, 1, 1024, 1024, 0);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
 
-    // Try retransmitting block 0 with same message id (should get COAP_IGNORE)
+    // Try retransmitting block 0 with same message id (should get COAP_231_CONTINUE)
     for (retransmit_count = 0 ; retransmit_count <=1; retransmit_count++)
     {
         setup_test_message(&TestMessage, 123, COAP_TYPE_CON, 0, 1, 1024, 1024, 0xBA);
         st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-        CU_ASSERT_EQUAL(st, COAP_IGNORE);
+        CU_ASSERT_EQUAL(st, COAP_231_CONTINUE);
     }
 
     // Send block 1
     setup_test_message(&TestMessage, 124, COAP_TYPE_CON, 1, 1, 1024, 1024, 1);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
 
-    // Try retransmitting block 1 with same message id (should get COAP_IGNORE)
+    // Try retransmitting block 1 with same message id (should get COAP_231_CONTINUE)
     for (retransmit_count = 0 ; retransmit_count <=1; retransmit_count++)
     {
         setup_test_message(&TestMessage, 124, COAP_TYPE_CON, 1, 1, 1024, 1024, 0xBA);
         st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-        CU_ASSERT_EQUAL(st, COAP_IGNORE);
+        CU_ASSERT_EQUAL(st, COAP_231_CONTINUE);
     }
 
-    // Try retransmitting block 0 again with same message id (should get COAP_IGNORE)
+    // Try retransmitting block 0 again with same message id (should get COAP_231_CONTINUE)
     for (retransmit_count = 0 ; retransmit_count <=1; retransmit_count++)
     {
         setup_test_message(&TestMessage, 123, COAP_TYPE_CON, 0, 1, 1024, 1024, 0xBA);
         st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-        CU_ASSERT_EQUAL(st, COAP_IGNORE);
+        CU_ASSERT_EQUAL(st, COAP_231_CONTINUE);
     }
 
-    // Try retransmitting block 1 again with same message id (should get COAP_IGNORE)
+    // Try retransmitting block 1 again with same message id (should get COAP_231_CONTINUE)
     for (retransmit_count = 0 ; retransmit_count <=1; retransmit_count++)
     {
         setup_test_message(&TestMessage, 124, COAP_TYPE_CON, 1, 1, 1024, 1024, 0xBA);
         st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-        CU_ASSERT_EQUAL(st, COAP_IGNORE);
+        CU_ASSERT_EQUAL(st, COAP_231_CONTINUE);
     }
 
     // block 2
     setup_test_message(&TestMessage, 125, COAP_TYPE_CON, 2, 1, 1024, 1024, 2);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
 
     // block 3
     setup_test_message(&TestMessage, 126, COAP_TYPE_CON, 3, 0, 1024, 256, 3);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
     CU_ASSERT_EQUAL(bsize, 3328);
 
-    // Try retransmitting block 1 again with same message id (should get COAP_IGNORE)
+    // Try retransmitting block 1 again with same message id (should get COAP_204_CHANGED)
     for (retransmit_count = 0 ; retransmit_count <=1; retransmit_count++)
     {
         setup_test_message(&TestMessage, 126, COAP_TYPE_CON, 3, 0, 1024, 256, 3);
         st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-        CU_ASSERT_EQUAL(st, COAP_IGNORE);
+        CU_ASSERT_EQUAL(st, COAP_204_CHANGED);
     }
 
     if (blk1 != NULL)
@@ -276,17 +276,17 @@ static void test_block1_stream_large(void)
     memset(TestPayload, 0, sizeof(TestPayload));
     setup_test_message(&TestMessage, 123, COAP_TYPE_CON, 0, 1, 1024, 1024, 0);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
 
     memset(TestPayload, 1, sizeof(TestPayload));
     setup_test_message(&TestMessage, 124, COAP_TYPE_CON, 1, 1, 1024, 1024, 1);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
 
     memset(TestPayload, 2, sizeof(TestPayload));
     setup_test_message(&TestMessage, 125, COAP_TYPE_CON, 2, 1, 1024, 1024, 2);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
 
     // large block side should result in COAP_413_ENTITY_TOO_LARGE
     setup_test_message(&TestMessage, 126, COAP_TYPE_CON, 0, 1, 1025, 1024, 3);
@@ -318,12 +318,12 @@ static void test_block1_stream_incomplete(void)
     memset(TestPayload, 0, sizeof(TestPayload));
     setup_test_message(&TestMessage, 123, COAP_TYPE_CON, 0, 1, 1024, 1024, 0);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
 
     memset(TestPayload, 1, sizeof(TestPayload));
     setup_test_message(&TestMessage, 124, COAP_TYPE_CON, 1, 1, 1024, 1024, 1);
     st = coap_block1_stream_handler(&blk1, &TestMessage, &resultBuffer, &bsize);
-    CU_ASSERT_EQUAL(st, MANUAL_RESPONSE);
+    CU_ASSERT_EQUAL(st, COAP_MANUAL_RESPONSE);
 
     // block 3
     setup_test_message(&TestMessage, 125, COAP_TYPE_CON, 3, 0, 1024, 256, 0xBA);

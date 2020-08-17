@@ -171,6 +171,11 @@ uint8_t lwm2m_report_coap_status(const char *filePath, const char *func, int cod
 #define COAP_503_SERVICE_UNAVAILABLE    COAP(0xA3)
 #define COAP_505_PROXYING_NOT_SUPPORTED COAP(0xA5)
 
+/* Erbium errors/hooks defined in er-coap */
+#define COAP_MEMORY_ALLOCATION_ERROR    COAP(0xC0)
+#define COAP_PACKET_SERIALIZATION_ERROR COAP(0xC1)
+#define COAP_MANUAL_RESPONSE            COAP(0xC2)
+
 /*
  * Standard Object IDs
  */

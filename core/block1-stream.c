@@ -76,7 +76,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
         }
 
         // Actual response will be sent by app
-        return MANUAL_RESPONSE;
+        return COAP_MANUAL_RESPONSE;
     }
 
     if (pBlock1Data != NULL)
@@ -198,7 +198,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
         // Send the status event.
         lwm2mcore_CallCoapExternalHandler(message, LWM2MCORE_RX_STREAM_IN_PROGRESS);
 
-        return MANUAL_RESPONSE;
+        return COAP_MANUAL_RESPONSE;
     }
     else
     {
@@ -210,7 +210,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
         lwm2mcore_CallCoapExternalHandler(message, LWM2MCORE_RX_STREAM_END);
 
         // Actual response will be sent by app
-        return MANUAL_RESPONSE;
+        return COAP_MANUAL_RESPONSE;
     }
 }
 #endif
