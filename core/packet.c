@@ -647,19 +647,6 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                             serverP->block1Data->block1Num = block1_num;
                             serverP->block1Data->block1Size = block1_size;
                         }
-
-                        if (COAP_MANUAL_RESPONSE == coap_error_code)
-                        {
-                            // Send ack to avoid retransmission
-                            bool isAckSent= lwm2m_send_empty_response(contextP,
-                                                                      serverP->shortID,
-                                                                      message->mid);
-                            if (false == isAckSent)
-                            {
-                                LOG("ACK was not successfully sent");
-                            }
-                            return;
-                        }
                     }
                     else
 #endif
@@ -777,7 +764,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 response->payload = NULL;
                 response->payload_len = 0;
             }
-            else if (coap_error_code != COAP_IGNORE)
+            else if ((coap_error_code != COAP_IGNORE) && (coap_error_code != COAP_MANUAL_RESPONSE))
             {
                 if (1 == coap_set_status_code(response, coap_error_code))
                 {
