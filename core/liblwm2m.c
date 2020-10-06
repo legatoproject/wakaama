@@ -59,6 +59,9 @@
 #ifdef SIERRA
 #include <lwm2mcore/lwm2mcore.h>
 #include "sessionManager.h"
+#ifdef LEGATO_EMBEDDED
+#include "legato.h"
+#endif
 #endif
 
 
@@ -72,8 +75,14 @@ lwm2m_context_t * lwm2m_init(void * userData)
     {
         memset(contextP, 0, sizeof(lwm2m_context_t));
         contextP->userData = userData;
+#ifdef LEGATO_EMBEDDED
+        uint16_t randBuf;
+        le_rand_GetBuffer((uint8_t*)(&randBuf), sizeof(randBuf));
+        contextP->nextMID = randBuf;
+#else
         srand((int)lwm2m_gettime());
         contextP->nextMID = rand();
+#endif
     }
 
     return contextP;
