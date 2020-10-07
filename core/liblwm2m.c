@@ -288,6 +288,7 @@ static int prv_refreshServerList(lwm2m_context_t * contextP)
     lwm2m_server_t * targetP;
     lwm2m_server_t * nextP;
 
+    LOG("Refreshing server list");
     // Remove all servers marked as dirty
     targetP = contextP->bootstrapServerList;
     contextP->bootstrapServerList = NULL;
@@ -297,11 +298,13 @@ static int prv_refreshServerList(lwm2m_context_t * contextP)
         targetP->next = NULL;
         if (!targetP->dirty)
         {
+            LOG_ARG("Adding BS server %d", targetP->shortID);
             targetP->status = STATE_DEREGISTERED;
             contextP->bootstrapServerList = (lwm2m_server_t *)LWM2M_LIST_ADD(contextP->bootstrapServerList, targetP);
         }
         else
         {
+            LOG_ARG("Deleting BS server %d", targetP->shortID);
             prv_deleteServer(targetP, contextP->userData);
         }
         targetP = nextP;
@@ -315,10 +318,12 @@ static int prv_refreshServerList(lwm2m_context_t * contextP)
         if (!targetP->dirty)
         {
             // TODO: Should we revert the status to STATE_DEREGISTERED ?
+            LOG_ARG("Adding DM server %d", targetP->shortID);
             contextP->serverList = (lwm2m_server_t *)LWM2M_LIST_ADD(contextP->serverList, targetP);
         }
         else
         {
+            LOG_ARG("Deleting DM server %d", targetP->shortID);
             prv_deleteServer(targetP, contextP->userData);
         }
         targetP = nextP;

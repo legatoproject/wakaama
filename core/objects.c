@@ -793,6 +793,7 @@ static int prv_getMandatoryInfo(lwm2m_object_t * objectP,
     }
     targetP->lifetime = value;
 
+    LOG_ARG("lifetime set to %d", targetP->lifetime);
     targetP->binding = utils_stringToBinding(dataP[1].value.asBuffer.buffer, dataP[1].value.asBuffer.length);
 
     lwm2m_data_free(size, dataP);
@@ -935,12 +936,18 @@ int object_getServers(lwm2m_context_t * contextP, bool checkOnly)
 #else
                      targetP->status = STATE_DEREGISTERED;
 #endif
+#if SIERRA
+                    if (checkOnly || !lwm2mcore_IsServerActive(targetP->shortID))
+#else
                     if (checkOnly)
+#endif
                     {
+                        LOG_ARG("Skipping server %d", targetP->shortID);
                         lwm2m_free(targetP);
                     }
                     else
                     {
+                        LOG_ARG("Adding server %d", targetP->shortID);
                         contextP->serverList = (lwm2m_server_t*)LWM2M_LIST_ADD(contextP->serverList, targetP);
                     }
                 }

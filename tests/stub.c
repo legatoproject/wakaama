@@ -143,6 +143,22 @@ bool lwm2mcore_GetRegistrationID
 }
 
 
+bool lwm2mcore_IsServerActive
+(
+    uint16_t        serverId        ///< [IN] server ID
+)
+{
+    (void) serverId;
+    return false;
+}
+
+bool lwm2mcore_IsEdmEnabled
+(
+    void
+)
+{
+    return false;
+}
 
 void lwm2mcore_DataDump
 (

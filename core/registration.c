@@ -241,6 +241,7 @@ static uint8_t prv_register(lwm2m_context_t * contextP,
     uint8_t * payload;
     int payload_length;
     lwm2m_transaction_t * transaction;
+    LOG_ARG("sending registration to server %d", server->shortID);
 
     payload_length = object_getRegisterPayloadBufferLength(contextP);
     if(payload_length == 0) return COAP_500_INTERNAL_SERVER_ERROR;
@@ -271,7 +272,7 @@ static uint8_t prv_register(lwm2m_context_t * contextP,
         lwm2m_free(query);
         return COAP_500_INTERNAL_SERVER_ERROR;
     }
-
+    LOG_ARG("registration query '%s'", query);
 #if SIERRA
     /* Dump REGISTER data */
     lwm2mcore_DataDump( "register", query, query_length);
@@ -578,7 +579,8 @@ static int prv_updateRegistration(lwm2m_context_t * contextP,
     char* query = NULL;
     int query_length = 0;
 
-    LOG_ARG("Update registration: regUpdateOptions 0x%x", server->regUpdateOptions);
+    LOG_ARG("Update registration: serverId %d regUpdateOptions 0x%x", server->shortID,
+            server->regUpdateOptions);
 
     if (server->sessionH == NULL)
     {

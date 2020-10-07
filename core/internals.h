@@ -202,6 +202,11 @@
 #define QUERY_BINDING       "b="
 #define QUERY_BINDING_LEN   2
 #define QUERY_DELIMITER     "&"
+#if SIERRA
+#define QUERY_EDM           "edm="
+#define QUERY_EDM_LEN       4
+#define QUERY_EDM_VALUE     "1"
+#endif
 
 #define LWM2M_VERSION      "1.0"
 #define LWM2M_VERSION_LEN  3

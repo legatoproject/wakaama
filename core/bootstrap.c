@@ -93,6 +93,21 @@ static void prv_requestBootstrap(lwm2m_context_t * context,
         return;
     }
     query_length += res;
+#if SIERRA
+    if (lwm2mcore_IsEdmEnabled())
+    {
+        // Add a query parameter indicating that the device supports EDM. This tells the
+        // BootStrap server to provision the EDM server credentials to the device.
+        res = utils_stringCopy(query + query_length, PRV_QUERY_BUFFER_LENGTH - query_length,
+                               QUERY_DELIMITER QUERY_EDM QUERY_EDM_VALUE);
+        if (res < 0)
+        {
+            bootstrapServer->status = STATE_BS_FAILING;
+            return;
+        }
+        query_length += res;
+    }
+#endif
 
     if (bootstrapServer->sessionH == NULL)
     {
@@ -112,6 +127,7 @@ static void prv_requestBootstrap(lwm2m_context_t * context,
             return;
         }
 
+        LOG_ARG("BS query '%s' len %d", query, query_length);
         coap_set_header_uri_path(transaction->message, "/"URI_BOOTSTRAP_SEGMENT);
         coap_set_header_uri_query(transaction->message, query);
         transaction->callback = prv_handleBootstrapReply;
