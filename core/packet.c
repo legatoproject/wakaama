@@ -703,6 +703,34 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
             if (coap_error_code == NO_ERROR)
             {
                 coap_error_code = handle_request(contextP, fromSessionH, message, response);
+
+#if SIERRA
+                // Execute the post request handler only if the operation succeeded
+                if ( (coap_error_code == COAP_NO_ERROR)
+                 && ( (response->code == COAP_201_CREATED)
+                   || (response->code == COAP_202_DELETED)
+                   || (response->code == COAP_204_CHANGED)
+                   || (response->code == COAP_205_CONTENT)
+                   || (response->code == COAP_231_CONTINUE)))
+                {
+                    lwm2mcore_Sid_t sID = lwm2mcore_ExeCommandEndHandler(fromSessionH, true);
+                    LOG_ARG("lwm2mcore_ExeCommandEndHandler returns %d", sID);
+
+                    if ((LWM2MCORE_ERR_COMPLETED_OK != sID)
+                     && (LWM2MCORE_ERR_ALREADY_PROCESSED != sID))
+                    {
+                        LOG("TODO: set CoAP error code according to sID");
+                        response->code = COAP_400_BAD_REQUEST;
+                    }
+                }
+                else
+                {
+                    lwm2mcore_Sid_t sID = lwm2mcore_ExeCommandEndHandler(fromSessionH, false);
+                    LOG_ARG("lwm2mcore_ExeCommandEndHandler returns %d", sID);
+                }
+#endif
+
+
             }
             if (coap_error_code==NO_ERROR)
             {
@@ -740,7 +768,9 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                             if(!response->block2_more)
                             {
                                 LOG("End of block2 transfer");
+#if SIERRA
                                 prv_end_async();
+#endif
                             }
                         } /* if (valid offset) */
                     }
@@ -762,7 +792,9 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                             if(!(response->block2_more))
                             {
                                 LOG("End of block2 transfer");
+#if SIERRA
                                 prv_end_async();
+#endif
                             }
                         }
                     } /* if (resource aware of blockwise) */
@@ -815,7 +847,20 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
             }
 
 #if SIERRA
-            lwm2mcore_ExecPostRequestHandler(fromSessionH);
+            // Execute the post request handler only if the operation succeeded
+            if ( (coap_error_code == COAP_NO_ERROR)
+             && ( (response->code == COAP_201_CREATED)
+               || (response->code == COAP_202_DELETED)
+               || (response->code == COAP_204_CHANGED)
+               || (response->code == COAP_205_CONTENT)
+               || (response->code == COAP_231_CONTINUE)))
+            {
+                lwm2mcore_ExecPostRequestHandler(fromSessionH, true);
+            }
+            else
+            {
+                lwm2mcore_ExecPostRequestHandler(fromSessionH, false);
+            }
 #endif
         }
         else
@@ -1300,13 +1345,16 @@ static lwm2m_server_t * GetRegisteredServer
         if (targetP->shortID == shortServerId)
         {
             /* found the server, send async response */
-            if (targetP->status == STATE_REGISTERED)
+            if ( (targetP->status == STATE_REGISTERED)
+              || (targetP->status == STATE_REG_UPDATE_NEEDED)
+              || (targetP->status == STATE_REG_FULL_UPDATE_NEEDED))
             {
                 return targetP;
             }
             else
             {
                 /* server is not registered */
+                LOG_ARG("Server (Id %d) is not registered: %d", shortServerId, targetP->status);
                 return NULL;
             }
         }

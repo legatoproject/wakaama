@@ -17,6 +17,31 @@
 #include <signal.h>
 #include "../../core/er-coap-13/er-coap-13.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  @brief Enumeration for handlers status ID code (returned value)
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LWM2MCORE_ERR_ASYNC_OPERATION       = 1,    ///< Handler will respond asynchronously.
+    LWM2MCORE_ERR_COMPLETED_OK          = 0,    ///< Handler treatment is OK
+    LWM2MCORE_ERR_GENERAL_ERROR         = -1,   ///< Handler treatment failed
+    LWM2MCORE_ERR_INCORRECT_RANGE       = -2,   ///< Bad parameter range (WRITE operation)
+    LWM2MCORE_ERR_NOT_YET_IMPLEMENTED   = -3,   ///< Not yet implemented resource
+    LWM2MCORE_ERR_OP_NOT_SUPPORTED      = -4,   ///< Not supported resource
+    LWM2MCORE_ERR_INVALID_ARG           = -5,   ///< Invalid parameter in resource handler
+    LWM2MCORE_ERR_INVALID_STATE         = -6,   ///< Invalid state to treat the resource handler
+    LWM2MCORE_ERR_OVERFLOW              = -7,   ///< Buffer overflow
+    LWM2MCORE_ERR_TIMEOUT               = -8,   ///< Timeout when reading or writing on socket
+    LWM2MCORE_ERR_NET_RECV_FAILED       = -9,   ///< Reading information from the socket failed
+    LWM2MCORE_ERR_NET_SEND_FAILED       = -10,  ///< Sending information through the socket failed
+    LWM2MCORE_ERR_NET_ERROR             = -11,  ///< Error on socket management (package download
+                                                ///< case)
+    LWM2MCORE_ERR_MEMORY                = -12,  ///< Memory issue
+    LWM2MCORE_ERR_RETRY_FAILED          = -13,  ///< Last download retry attempt failed.
+    LWM2MCORE_ERR_ALREADY_PROCESSED     = -14   ///< The request was already made
+}lwm2mcore_Sid_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -249,10 +274,26 @@ void lwm2mcore_DeleteRegistrationID
 //--------------------------------------------------------------------------------------------------
 void lwm2mcore_ExecPostRequestHandler
 (
-    void* connP
+    void* connP,                /// [IN] Connection list
+    bool  isCommandSucceded     /// [IN] Is the command succeeded?
 )
 {
     return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub for the function that executes a previously added post LWM2M request handler for the
+ * request that has just been processed and called before the response is sent
+ */
+//--------------------------------------------------------------------------------------------------
+lwm2mcore_Sid_t lwm2mcore_ExeCommandEndHandler
+(
+    void* connP,                /// [IN] Connection list
+    bool  isCommandSucceded     /// [IN] Is the command succeeded?
+)
+{
+    return LWM2MCORE_ERR_COMPLETED_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
