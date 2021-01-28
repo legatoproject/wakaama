@@ -160,6 +160,7 @@ uint8_t lwm2m_report_coap_status(const char *filePath, const char *func, int cod
 #define COAP_400_BAD_REQUEST            COAP(0x80)
 #define COAP_401_UNAUTHORIZED           COAP(0x81)
 #define COAP_402_BAD_OPTION             COAP(0x82)
+#define COAP_403_FORBIDDEN              COAP(0x83)
 #define COAP_404_NOT_FOUND              COAP(0x84)
 #define COAP_405_METHOD_NOT_ALLOWED     COAP(0x85)
 #define COAP_406_NOT_ACCEPTABLE         COAP(0x86)
