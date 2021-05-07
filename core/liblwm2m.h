@@ -546,6 +546,9 @@ typedef struct _lwm2m_server_
     bool                    dirty;
     uint8_t                 regUpdateOptions; // bitmap of parameters to be sent in a registration update message
     lwm2m_block1_data_t *   block1Data;   // buffer to handle block1 data, should be replace by a list to support several block1 transfer by server.
+#ifdef SIERRA
+    bool                    isSkippingDereg; // skips DEREGISTER msg
+#endif
 } lwm2m_server_t;
 
 

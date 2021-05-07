@@ -950,6 +950,9 @@ int object_getServers(lwm2m_context_t * contextP, bool checkOnly)
                         LOG_ARG("Adding server %d", targetP->shortID);
                         contextP->serverList = (lwm2m_server_t*)LWM2M_LIST_ADD(contextP->serverList, targetP);
                     }
+#if SIERRA
+                    targetP->isSkippingDereg = false;
+#endif
                 }
             }
             lwm2m_data_free(size, dataP);

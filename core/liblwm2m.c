@@ -100,6 +100,27 @@ bool lwm2m_deregister(lwm2m_context_t * context)
         result = false;
     }
 
+#ifdef SIERRA
+    /* Not every server should be DEREGISTERED. In this case, we never
+     * want to deregister EDM serverID. This allows us to manage various cases
+     * such as:
+     *    - Only a connection to EDM (no deregister require => return false)
+     *    - Only a connection to DM (deregister)
+     *    - Connection to both EDM and DM (Only deregister DM) */
+    result = false;
+
+    while (NULL != server)
+    {
+        if (!server->isSkippingDereg)
+        {
+            if (registration_deregister(context, server))
+            {
+                result = true;
+            }
+        }
+        server = server->next;
+    }
+#else
     while (NULL != server)
     {
         if (false == registration_deregister(context, server))
@@ -108,6 +129,7 @@ bool lwm2m_deregister(lwm2m_context_t * context)
         }
         server = server->next;
     }
+#endif
     return result;
 }
 
