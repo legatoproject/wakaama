@@ -495,7 +495,7 @@ int lwm2m_step(lwm2m_context_t * contextP,
     time_t tv_sec;
     int result;
 
-    LOG_ARG("timeoutP: %" PRId64, *timeoutP);
+    LOG_ARG("timeoutP: %" PRId64, (int64_t) *timeoutP);
     tv_sec = lwm2m_gettime();
 
     if ((int32_t)tv_sec < 0)
@@ -682,7 +682,7 @@ next_step:
     registration_step(contextP, tv_sec, timeoutP);
     transaction_step(contextP, tv_sec, timeoutP);
 
-    LOG_ARG("Final timeoutP: %" PRId64, *timeoutP);
+    LOG_ARG("Final timeoutP: %" PRId64, (int64_t) *timeoutP);
 #ifdef LWM2M_CLIENT_MODE
     LOG_ARG("Final state: %s", STR_STATE(contextP->state));
 #endif
