@@ -471,6 +471,7 @@ static void prv_ack_callback(lwm2m_transaction_t * transacP, void * message)
     if (transacP->ack_received)
     {
         LOG_ARG("mid = %d, retransmit_count = %d ", ack_message->mid, transacP->retrans_counter);
+
         switch(packet->code)
         {
             case COAP_201_CREATED:
@@ -478,18 +479,23 @@ static void prv_ack_callback(lwm2m_transaction_t * transacP, void * message)
                 lwm2mcore_AckCallback(LWM2MCORE_ACK_RECEIVED, packet->code);
                 break;
 
-            // All 4.xx responses are mapped to LWM2MCORE_ACK_REJECTED
-            case COAP_400_BAD_REQUEST:
             case COAP_403_FORBIDDEN:
+                lwm2mcore_AckCallback(LWM2MCORE_ACK_REJECTED, packet->code);
+                break;
+
+            case COAP_404_NOT_FOUND:
+                lwm2mcore_AckCallback(LWM2MCORE_ACK_EXPIRED, packet->code);
+
+            // All others 4.xx responses are mapped to LWM2MCORE_ACK_REJECTED
+            case COAP_400_BAD_REQUEST:
             case COAP_401_UNAUTHORIZED:
             case COAP_402_BAD_OPTION:
-            case COAP_404_NOT_FOUND:
             case COAP_405_METHOD_NOT_ALLOWED:
             case COAP_406_NOT_ACCEPTABLE:
             case COAP_408_REQ_ENTITY_INCOMPLETE:
             case COAP_412_PRECONDITION_FAILED:
             case COAP_413_ENTITY_TOO_LARGE:
-                lwm2mcore_AckCallback(LWM2MCORE_ACK_REJECTED, packet->code);
+                lwm2mcore_AckCallback(LWM2MCORE_ACK_FAILURE, packet->code);
                 break;
 
             default:
