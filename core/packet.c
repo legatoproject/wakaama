@@ -475,7 +475,7 @@ static void prv_ack_callback(lwm2m_transaction_t * transacP, void * message)
         {
             case COAP_201_CREATED:
             case COAP_204_CHANGED:
-                lwm2mcore_AckCallback(LWM2MCORE_ACK_RECEIVED);
+                lwm2mcore_AckCallback(LWM2MCORE_ACK_RECEIVED, packet->code);
                 break;
 
             // All 4.xx responses are mapped to LWM2MCORE_ACK_REJECTED
@@ -489,18 +489,18 @@ static void prv_ack_callback(lwm2m_transaction_t * transacP, void * message)
             case COAP_408_REQ_ENTITY_INCOMPLETE:
             case COAP_412_PRECONDITION_FAILED:
             case COAP_413_ENTITY_TOO_LARGE:
-                lwm2mcore_AckCallback(LWM2MCORE_ACK_REJECTED);
+                lwm2mcore_AckCallback(LWM2MCORE_ACK_REJECTED, packet->code);
                 break;
 
             default:
-                lwm2mcore_AckCallback(LWM2MCORE_ACK_FAILURE);
+                lwm2mcore_AckCallback(LWM2MCORE_ACK_FAILURE, packet->code);
             break;
         }
     }
     else
     {
         LOG_ARG("mid = %d, retransmit_count = %d ", ack_message->mid, transacP->retrans_counter);
-        lwm2mcore_AckCallback(LWM2MCORE_ACK_TIMEOUT);
+        lwm2mcore_AckCallback(LWM2MCORE_ACK_TIMEOUT, COAP_ERROR_CODE_UNSET);
     }
 }
 
