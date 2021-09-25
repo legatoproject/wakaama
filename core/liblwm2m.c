@@ -136,10 +136,12 @@ bool lwm2m_deregister(lwm2m_context_t * context)
 static void prv_deleteServer(lwm2m_server_t * serverP, void *userData)
 {
     // TODO parse transaction and observation to remove the ones related to this server
+#ifndef LWM2M_RETAIN_SERVER_LIST
     if (serverP->sessionH != NULL)
     {
          lwm2m_close_connection(serverP->sessionH, userData);
     }
+#endif
     if (NULL != serverP->location)
     {
         lwm2m_free(serverP->location);
@@ -153,7 +155,6 @@ static void prv_deleteServer(lwm2m_server_t * serverP, void *userData)
     lwm2m_free(serverP);
 }
 
-#ifndef LWM2M_RETAIN_SERVER_LIST
 static void prv_deleteServerList(lwm2m_context_t * context)
 {
     while (NULL != context->serverList)
@@ -164,7 +165,6 @@ static void prv_deleteServerList(lwm2m_context_t * context)
         prv_deleteServer(server, context->userData);
     }
 }
-#endif
 
 static void prv_deleteBootstrapServer(lwm2m_server_t * serverP, void *userData)
 {
@@ -273,9 +273,7 @@ void lwm2m_followClosure(lwm2m_context_t * contextP)
 #ifdef LWM2M_CLIENT_MODE
 
     LOG("Entering");
-#ifndef LWM2M_RETAIN_SERVER_LIST
     prv_deleteServerList(contextP);
-#endif
     prv_deleteBootstrapServerList(contextP);
     acl_free(contextP);
     prv_deleteObservedList(contextP);
