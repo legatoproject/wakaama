@@ -117,11 +117,25 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
                 LOG("Retransmitted packet discarded");
                 if(message->block1_more)
                 {
-                    return COAP_231_CONTINUE;
+                    if (COAP_ERROR_CODE_UNSET != block1Data->lastack)
+                    {
+                        return COAP_231_CONTINUE;
+                    }
+                    else
+                    {
+                        return COAP_MANUAL_RESPONSE;
+                    }
                 }
                 else
                 {
-                    return COAP_204_CHANGED;
+                    if (COAP_IGNORE != block1Data->lastack)
+                    {
+                        return COAP_204_CHANGED;
+                    }
+                    else
+                    {
+                        return COAP_MANUAL_RESPONSE;
+                    }
                 }
             }
         }
@@ -147,6 +161,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
         // write new block in buffer
         memcpy(block1Data->block1buffer, message->payload, message->payload_len);
         block1Data->lastmid = message->mid;
+        block1Data->lastack = COAP_ERROR_CODE_UNSET;
     }
     // manage already started block1 transfer
     else
@@ -175,6 +190,7 @@ uint8_t coap_block1_stream_handler(lwm2m_block1_data_t ** pBlock1Data,
            block1Data->block1bufferSize += message->payload_len;
            memcpy(block1Data->block1buffer, message->payload, message->payload_len);
            block1Data->lastmid = message->mid;
+           block1Data->lastack = COAP_ERROR_CODE_UNSET;
            block1Data->block1Num = blockNum;
         }
         else

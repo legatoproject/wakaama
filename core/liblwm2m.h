@@ -530,6 +530,7 @@ struct _lwm2m_block1_data_
     uint8_t *             block1buffer;     // data buffer
     size_t                block1bufferSize; // buffer size
     uint16_t              lastmid;          // mid of the last message received
+    uint8_t               lastack;          // Ack of the last message
     uint32_t              block1Num;        // block1 number
     uint16_t              block1Size;        // block1 size
 };

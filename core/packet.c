@@ -81,7 +81,7 @@ Contains code snippets which are:
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
-
+ 
 */
 
 
@@ -1069,6 +1069,21 @@ bool prv_send_response(lwm2m_context_t * contextP,
 
     /* set uri */
     coap_set_header_uri_path(reponsePtr, server->location);
+
+    if(server->block1Data)
+    {
+        if (mid == server->block1Data->lastmid)
+        {
+            if (code == COAP_NO_ERROR)
+            {
+                server->block1Data->lastack = COAP_ERROR_CODE_UNSET;
+            }
+            else
+            {
+                server->block1Data->lastack = code;
+            }
+        }
+    }
 
     if (code == COAP_231_CONTINUE)
     {
