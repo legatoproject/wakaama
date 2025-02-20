@@ -276,6 +276,11 @@ static uint8_t handle_request(lwm2m_context_t * contextP,
                 }
                 else
                 {
+                    /* Send an ack (empty response) to prevent from retransmissions */
+                    LOG("Send an empty response");
+                    coap_init_message(response, COAP_TYPE_ACK, 0, message->mid);
+                    message_send(contextP, response, fromSessionH);
+
                     /* Send a piggyback response to save bandwidth. */
                     return lwm2mcore_CallCoapEventHandler(message);
                 }
